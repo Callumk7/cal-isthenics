@@ -8,7 +8,7 @@ A fresh web app for personalised calisthenics training. The current product surf
 - React 19 and TypeScript
 - Vite
 - Tailwind CSS v4
-- shadcn/ui-style components and Base UI
+- shadcn/ui-style components built with React Aria Components
 - Vitest, Testing Library, ESLint, Prettier
 
 ## Getting started
