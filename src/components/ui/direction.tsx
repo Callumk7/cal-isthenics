@@ -8,8 +8,8 @@ function DirectionProvider(
     direction?: "ltr" | "rtl"
   }
 ) {
-  // For compatibility with Radix / Base UI, if only a `direction` is provided and not a `locale`,
-  // create a locale string that forces the direction by setting the script to arabic or latin.
+  // If only a `direction` is provided and not a `locale`, create a locale string
+  // that forces the direction by setting the script to Arabic or Latin.
   const { locale: currentLocale } = useLocale()
   let locale = props.locale
   if (!locale && props.direction) {
