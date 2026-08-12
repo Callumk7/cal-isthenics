@@ -75,3 +75,5 @@ A TanStack Start-compatible deployment target and any required environment confi
 ## Agent context
 
 See [`AGENTS.md`](./AGENTS.md) for a concise project overview intended for coding agents.
+
+> **Note:** This repo supports collaborative work with [Hermes Agent](https://github.com/hermes-works-for-callum) — issues, PRs, and code review can be authored by the dedicated bot account.
