@@ -3,16 +3,14 @@
 import * as React from "react"
 import { cva } from "class-variance-authority"
 import type { VariantProps } from "class-variance-authority"
-import {
-  Button as ButtonPrimitive,
-  Link as LinkPrimitive,
-} from "react-aria-components"
-import type { ButtonProps, LinkProps } from "react-aria-components"
+import { Button as ButtonPrimitive } from "react-aria-components"
+import type { ButtonProps } from "react-aria-components"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { RouterLink } from "@/components/ui/router-link"
 import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
@@ -42,7 +40,11 @@ type SidebarContextProps = {
 }
 
 type SidebarButtonProps =
-  (LinkProps & { href: string }) | (ButtonProps & { href?: never })
+  | (Omit<React.ComponentProps<typeof RouterLink>, "className"> & {
+      to: string
+      className?: string
+    })
+  | (ButtonProps & { to?: never })
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
 
@@ -499,8 +501,8 @@ function SidebarMenuButton({
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const { isMobile, state } = useSidebar()
   const comp =
-    props.href !== undefined ? (
-      <LinkPrimitive
+    props.to !== undefined ? (
+      <RouterLink
         data-slot="sidebar-menu-button"
         data-sidebar="menu-button"
         data-size={size}
@@ -651,8 +653,8 @@ function SidebarMenuSubButton({
   size?: "sm" | "md"
   isActive?: boolean
 }) {
-  return props.href !== undefined ? (
-    <LinkPrimitive
+  return props.to !== undefined ? (
+    <RouterLink
       data-slot="sidebar-menu-sub-button"
       data-sidebar="menu-sub-button"
       data-size={size}

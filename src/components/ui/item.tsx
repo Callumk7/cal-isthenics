@@ -1,10 +1,8 @@
 import * as React from "react"
 import { cva } from "class-variance-authority"
 import type { VariantProps } from "class-variance-authority"
-import { Link as LinkPrimitive } from "react-aria-components"
-import type { LinkProps } from "react-aria-components"
-
 import { cn } from "@/lib/utils"
+import { RouterLink } from "@/components/ui/router-link"
 import { Separator } from "@/components/ui/separator"
 
 function ItemGroup({ className, ...props }: React.ComponentProps<"div">) {
@@ -57,21 +55,41 @@ const itemVariants = cva(
   }
 )
 
+type ItemProps = VariantProps<typeof itemVariants> &
+  (
+    | (Omit<React.ComponentProps<typeof RouterLink>, "className"> & {
+        to: string
+        className?: string
+      })
+    | (React.HTMLAttributes<HTMLDivElement> & { to?: never })
+  )
+
 function Item({
   className,
   variant = "default",
   size = "default",
   ...props
-}: Omit<LinkProps, "children"> &
-  React.HTMLAttributes<HTMLElement> &
-  VariantProps<typeof itemVariants>) {
-  const Element = "href" in props ? LinkPrimitive : "div"
+}: ItemProps) {
+  const itemClassName = cn(itemVariants({ variant, size, className }))
+
+  if (props.to !== undefined) {
+    return (
+      <RouterLink
+        data-slot="item"
+        data-variant={variant}
+        data-size={size}
+        className={itemClassName}
+        {...props}
+      />
+    )
+  }
+
   return (
-    <Element
+    <div
       data-slot="item"
       data-variant={variant}
       data-size={size}
-      className={cn(itemVariants({ variant, size, className }))}
+      className={itemClassName}
       {...props}
     />
   )

@@ -3,16 +3,11 @@
 import type * as React from "react"
 import { cva } from "class-variance-authority"
 import type { VariantProps } from "class-variance-authority"
-import {
-  Button as ButtonPrimitive,
-  Link as LinkPrimitive,
-} from "react-aria-components"
-import type {
-  ButtonProps as ButtonPrimitiveProps,
-  LinkProps as LinkPrimitiveProps,
-} from "react-aria-components"
+import { Button as ButtonPrimitive } from "react-aria-components"
+import type { ButtonProps as ButtonPrimitiveProps } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
+import { RouterLink } from "@/components/ui/router-link"
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-none border border-transparent bg-clip-padding text-xs font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -75,12 +70,12 @@ function LinkButton({
   variant = "default",
   size = "default",
   ...props
-}: Omit<LinkPrimitiveProps, "className"> &
+}: Omit<React.ComponentProps<typeof RouterLink>, "className"> &
   VariantProps<typeof buttonVariants> & {
     className?: string
   }) {
   return (
-    <LinkPrimitive
+    <RouterLink
       data-slot="button"
       data-variant={variant}
       data-size={size}

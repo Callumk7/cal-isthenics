@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   CalendarDaysIcon,
   CheckIcon,
@@ -12,7 +11,7 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button, LinkButton } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -44,17 +43,7 @@ const week = [
 
 function SamplePage() {
   return (
-    <main className="min-h-svh bg-muted/30 text-foreground">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-          <LinkButton href="/" variant="ghost">
-            <ArrowLeftIcon data-icon="inline-start" />
-            Back to home
-          </LinkButton>
-          <Badge variant="outline">Sample route</Badge>
-        </div>
-      </header>
-
+    <div className="min-h-[calc(100svh-3.5rem)] bg-muted/30 text-foreground">
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
         <div className="flex flex-col gap-6 border-b pb-10 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -65,8 +54,8 @@ function SamplePage() {
               Ready to train?
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-              This placeholder dashboard demonstrates a simple authenticated
-              product route using the current React Aria component set.
+              This placeholder dashboard gives us a starting point for the
+              training experience while the product takes shape.
             </p>
           </div>
           <Button size="lg">
@@ -207,6 +196,6 @@ function SamplePage() {
           </Card>
         </section>
       </div>
-    </main>
+    </div>
   )
 }
