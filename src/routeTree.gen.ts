@@ -8,77 +8,94 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root"
-import { Route as IndexRouteImport } from "./routes/index"
-import { Route as SampleRouteImport } from "./routes/sample"
-import { Route as SampleTwoRouteImport } from "./routes/sample-two"
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as SampleRouteImport } from './routes/sample'
+import { Route as SampleThreeRouteImport } from './routes/sample-three'
+import { Route as SampleTwoRouteImport } from './routes/sample-two'
 
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SampleRoute = SampleRouteImport.update({
-  id: "/sample",
-  path: "/sample",
+  id: '/sample',
+  path: '/sample',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SampleThreeRoute = SampleThreeRouteImport.update({
+  id: '/sample-three',
+  path: '/sample-three',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SampleTwoRoute = SampleTwoRouteImport.update({
-  id: "/sample-two",
-  path: "/sample-two",
+  id: '/sample-two',
+  path: '/sample-two',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute
-  "/sample": typeof SampleRoute
-  "/sample-two": typeof SampleTwoRoute
+  '/': typeof IndexRoute
+  '/sample': typeof SampleRoute
+  '/sample-three': typeof SampleThreeRoute
+  '/sample-two': typeof SampleTwoRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute
-  "/sample": typeof SampleRoute
-  "/sample-two": typeof SampleTwoRoute
+  '/': typeof IndexRoute
+  '/sample': typeof SampleRoute
+  '/sample-three': typeof SampleThreeRoute
+  '/sample-two': typeof SampleTwoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  "/": typeof IndexRoute
-  "/sample": typeof SampleRoute
-  "/sample-two": typeof SampleTwoRoute
+  '/': typeof IndexRoute
+  '/sample': typeof SampleRoute
+  '/sample-three': typeof SampleThreeRoute
+  '/sample-two': typeof SampleTwoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: "/" | "/sample" | "/sample-two"
+  fullPaths: '/' | '/sample' | '/sample-three' | '/sample-two'
   fileRoutesByTo: FileRoutesByTo
-  to: "/" | "/sample" | "/sample-two"
-  id: "__root__" | "/" | "/sample" | "/sample-two"
+  to: '/' | '/sample' | '/sample-three' | '/sample-two'
+  id: '__root__' | '/' | '/sample' | '/sample-three' | '/sample-two'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SampleRoute: typeof SampleRoute
+  SampleThreeRoute: typeof SampleThreeRoute
   SampleTwoRoute: typeof SampleTwoRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
-      id: "/"
-      path: "/"
-      fullPath: "/"
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/sample": {
-      id: "/sample"
-      path: "/sample"
-      fullPath: "/sample"
+    '/sample': {
+      id: '/sample'
+      path: '/sample'
+      fullPath: '/sample'
       preLoaderRoute: typeof SampleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    "/sample-two": {
-      id: "/sample-two"
-      path: "/sample-two"
-      fullPath: "/sample-two"
+    '/sample-three': {
+      id: '/sample-three'
+      path: '/sample-three'
+      fullPath: '/sample-three'
+      preLoaderRoute: typeof SampleThreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sample-two': {
+      id: '/sample-two'
+      path: '/sample-two'
+      fullPath: '/sample-two'
       preLoaderRoute: typeof SampleTwoRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -88,15 +105,16 @@ declare module "@tanstack/react-router" {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SampleRoute: SampleRoute,
+  SampleThreeRoute: SampleThreeRoute,
   SampleTwoRoute: SampleTwoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx"
-import type { createStart } from "@tanstack/react-start"
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
