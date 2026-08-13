@@ -1,5 +1,10 @@
 import { useRouterState } from "@tanstack/react-router"
-import { ActivityIcon, DumbbellIcon, ZapIcon } from "lucide-react"
+import {
+  ActivityIcon,
+  DumbbellIcon,
+  HeartPulseIcon,
+  ZapIcon,
+} from "lucide-react"
 
 import {
   Sidebar,
@@ -25,6 +30,11 @@ const navigation = [
     label: "Progress",
     to: "/sample-two",
     icon: ActivityIcon,
+  },
+  {
+    label: "Recovery",
+    to: "/sample-three",
+    icon: HeartPulseIcon,
   },
 ]
 
