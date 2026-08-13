@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 import {
   ActivityIcon,
-  ArrowLeftIcon,
   ChartNoAxesColumnIcon,
   ClockIcon,
   CrownIcon,
@@ -12,7 +11,6 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { LinkButton } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -66,17 +64,7 @@ const milestones = [
 
 function SampleTwoPage() {
   return (
-    <main className="min-h-svh bg-muted/30 text-foreground">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-          <LinkButton href="/" variant="ghost">
-            <ArrowLeftIcon data-icon="inline-start" />
-            Back to home
-          </LinkButton>
-          <Badge variant="outline">Sample route two</Badge>
-        </div>
-      </header>
-
+    <div className="min-h-[calc(100svh-3.5rem)] bg-muted/30 text-foreground">
       <div className="mx-auto max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
         {/* Heading */}
         <div className="flex flex-col gap-6 border-b pb-10 sm:flex-row sm:items-end sm:justify-between">
@@ -88,9 +76,8 @@ function SampleTwoPage() {
               Your journey so far
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground">
-              A placeholder analytics page showcasing personal records, weekly
-              training volume, and skill milestones using the existing component
-              library.
+              A placeholder view for personal records, weekly training volume,
+              and skill milestones while the product takes shape.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -245,6 +232,6 @@ function SampleTwoPage() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   )
 }

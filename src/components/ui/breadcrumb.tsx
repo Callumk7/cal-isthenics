@@ -3,15 +3,11 @@ import {
   Breadcrumb as BreadcrumbPrimitive,
   Breadcrumbs as BreadcrumbsPrimitive,
   composeRenderProps,
-  Link as LinkPrimitive,
 } from "react-aria-components"
-import type {
-  BreadcrumbProps,
-  BreadcrumbsProps,
-  LinkProps,
-} from "react-aria-components"
+import type { BreadcrumbProps, BreadcrumbsProps } from "react-aria-components"
 
 import { cn } from "@/lib/utils"
+import { RouterLink } from "@/components/ui/router-link"
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react"
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
@@ -72,12 +68,16 @@ function BreadcrumbItem({
   )
 }
 
-function BreadcrumbLink({ className, render, ...props }: LinkProps) {
+function BreadcrumbLink({
+  className,
+  ...props
+}: Omit<React.ComponentProps<typeof RouterLink>, "className"> & {
+  className?: string
+}) {
   return (
-    <LinkPrimitive
+    <RouterLink
       data-slot="breadcrumb-link"
       className={cn("transition-colors hover:text-foreground", className)}
-      render={render}
       {...props}
     />
   )
