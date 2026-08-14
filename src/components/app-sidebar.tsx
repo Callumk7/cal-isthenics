@@ -2,6 +2,7 @@ import { useRouterState } from "@tanstack/react-router"
 import {
   ActivityIcon,
   DumbbellIcon,
+  HandIcon,
   HeartPulseIcon,
   ZapIcon,
 } from "lucide-react"
@@ -35,6 +36,11 @@ const navigation = [
     label: "Recovery",
     to: "/sample-three",
     icon: HeartPulseIcon,
+  },
+  {
+    label: "Skills",
+    to: "/sample-four",
+    icon: HandIcon,
   },
 ]
 
