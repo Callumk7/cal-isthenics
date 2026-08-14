@@ -62,6 +62,23 @@ pnpm test
 
 No formal test layout has been established yet. Prefer clear, discoverable tests using Testing Library for React UI behaviour as the app grows.
 
+## Database
+
+Drizzle ORM with a local SQLite database (`better-sqlite3`).
+
+Database scripts:
+
+```bash
+pnpm db:generate  # generate SQL migrations from the schema
+pnpm db:migrate   # apply pending migrations to the local SQLite file
+pnpm db:push      # push schema changes directly (development shortcut)
+pnpm db:studio    # open Drizzle Studio in the browser
+```
+
+The local database file lives at `./sqlite/cal.db` by default. Override with the `DATABASE_URL` environment variable.
+
+The database layer lives in `src/db/` and is **server-side only** — never import it from client components.
+
 ## Deployment
 
 Deployment is not defined yet. For now, verify the app builds successfully with:

@@ -13,3 +13,13 @@ todos.json
 
 # typescript
 *.tsbuildinfo
+
+# SQLite database files
+sqlite/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Drizzle generated output (optional – remove if you want to commit migrations)
+drizzle/
