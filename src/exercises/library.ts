@@ -1,0 +1,304 @@
+import { and, asc, eq, isNull } from "drizzle-orm"
+import type { DrizzleD1Database } from "drizzle-orm/d1"
+
+import type * as schema from "../db/schema"
+import { exerciseCategories, exerciseVariants } from "../db/schema"
+
+export type ExerciseLibraryDatabase = DrizzleD1Database<typeof schema>
+
+export type LibraryFieldErrors = Partial<
+  Record<"name" | "difficultyMultiplier" | "categoryId", string>
+>
+
+export type LibraryMutationResult<T> =
+  | { ok: true; value: T }
+  | {
+      ok: false
+      error: "validation" | "not_found"
+      fieldErrors?: LibraryFieldErrors
+    }
+
+const MAX_NAME_LENGTH = 100
+
+function validateName(
+  name: unknown
+): { value: string } | { error: LibraryFieldErrors } {
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return { error: { name: "Enter a name." } }
+  }
+  const value = name.trim()
+  if (value.length > MAX_NAME_LENGTH) {
+    return {
+      error: { name: `Name must be ${MAX_NAME_LENGTH} characters or fewer.` },
+    }
+  }
+  return { value }
+}
+
+/** Convert a form-facing multiplier (for example 1.25) to integer thousandths. */
+export function parseDifficultyMultiplier(
+  value: unknown
+): { value: number } | { error: LibraryFieldErrors } {
+  const displayValue =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : Number.NaN
+  const thousandths = displayValue * 1000
+
+  if (
+    !Number.isFinite(displayValue) ||
+    displayValue <= 0 ||
+    !Number.isSafeInteger(thousandths)
+  ) {
+    return {
+      error: {
+        difficultyMultiplier:
+          "Enter a positive multiplier with no more than three decimal places.",
+      },
+    }
+  }
+  return { value: thousandths }
+}
+
+export async function getActiveExerciseLibrary(
+  db: ExerciseLibraryDatabase,
+  userId: string
+) {
+  return db.query.exerciseCategories.findMany({
+    where: and(
+      eq(exerciseCategories.userId, userId),
+      isNull(exerciseCategories.archivedAt)
+    ),
+    with: {
+      variants: {
+        where: and(
+          eq(exerciseVariants.userId, userId),
+          isNull(exerciseVariants.archivedAt)
+        ),
+        orderBy: [asc(exerciseVariants.name)],
+      },
+    },
+    orderBy: [asc(exerciseCategories.name)],
+  })
+}
+
+/** Includes archived rows so templates and historical references remain resolvable. */
+export async function getExerciseManagementLibrary(
+  db: ExerciseLibraryDatabase,
+  userId: string
+) {
+  return db.query.exerciseCategories.findMany({
+    where: eq(exerciseCategories.userId, userId),
+    with: {
+      variants: {
+        where: eq(exerciseVariants.userId, userId),
+        orderBy: [asc(exerciseVariants.name)],
+      },
+    },
+    orderBy: [asc(exerciseCategories.name)],
+  })
+}
+
+/** Resolve a variant for an existing reference, including archived records. */
+export async function getExerciseVariantReference(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  variantId: string
+) {
+  return db.query.exerciseVariants.findFirst({
+    where: and(
+      eq(exerciseVariants.id, variantId),
+      eq(exerciseVariants.userId, userId)
+    ),
+    with: { category: true },
+  })
+}
+
+export async function createExerciseCategory(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  input: { name: unknown },
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseCategories.$inferSelect>> {
+  const name = validateName(input.name)
+  if ("error" in name)
+    return { ok: false, error: "validation", fieldErrors: name.error }
+
+  const value = {
+    id: crypto.randomUUID(),
+    userId,
+    name: name.value,
+    archivedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await db.insert(exerciseCategories).values(value)
+  return { ok: true, value }
+}
+
+export async function renameExerciseCategory(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  input: { id: string; name: unknown },
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseCategories.$inferSelect>> {
+  const name = validateName(input.name)
+  if ("error" in name)
+    return { ok: false, error: "validation", fieldErrors: name.error }
+
+  const values = await db
+    .update(exerciseCategories)
+    .set({ name: name.value, updatedAt: now })
+    .where(
+      and(
+        eq(exerciseCategories.id, input.id),
+        eq(exerciseCategories.userId, userId),
+        isNull(exerciseCategories.archivedAt)
+      )
+    )
+    .returning()
+    .all()
+  if (values.length === 0) return { ok: false, error: "not_found" }
+  return { ok: true, value: values[0] }
+}
+
+export async function archiveExerciseCategory(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  id: string,
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseCategories.$inferSelect>> {
+  const values = await db
+    .update(exerciseCategories)
+    .set({ archivedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(exerciseCategories.id, id),
+        eq(exerciseCategories.userId, userId),
+        isNull(exerciseCategories.archivedAt)
+      )
+    )
+    .returning()
+    .all()
+  if (values.length === 0) return { ok: false, error: "not_found" }
+  return { ok: true, value: values[0] }
+}
+
+async function findActiveOwnedCategory(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  categoryId: string
+) {
+  return db.query.exerciseCategories.findFirst({
+    where: and(
+      eq(exerciseCategories.id, categoryId),
+      eq(exerciseCategories.userId, userId),
+      isNull(exerciseCategories.archivedAt)
+    ),
+    columns: { id: true },
+  })
+}
+
+export async function createExerciseVariant(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  input: { categoryId: string; name: unknown; difficultyMultiplier: unknown },
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseVariants.$inferSelect>> {
+  const name = validateName(input.name)
+  const multiplier = parseDifficultyMultiplier(input.difficultyMultiplier)
+  if ("error" in name || "error" in multiplier) {
+    return {
+      ok: false,
+      error: "validation",
+      fieldErrors: {
+        ...("error" in name ? name.error : {}),
+        ...("error" in multiplier ? multiplier.error : {}),
+      },
+    }
+  }
+
+  if (!(await findActiveOwnedCategory(db, userId, input.categoryId))) {
+    return {
+      ok: false,
+      error: "not_found",
+      fieldErrors: { categoryId: "Category was not found." },
+    }
+  }
+
+  const value = {
+    id: crypto.randomUUID(),
+    userId,
+    categoryId: input.categoryId,
+    name: name.value,
+    difficultyMultiplier: multiplier.value,
+    archivedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await db.insert(exerciseVariants).values(value)
+  return { ok: true, value }
+}
+
+export async function editExerciseVariant(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  input: { id: string; name: unknown; difficultyMultiplier: unknown },
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseVariants.$inferSelect>> {
+  const name = validateName(input.name)
+  const multiplier = parseDifficultyMultiplier(input.difficultyMultiplier)
+  if ("error" in name || "error" in multiplier) {
+    return {
+      ok: false,
+      error: "validation",
+      fieldErrors: {
+        ...("error" in name ? name.error : {}),
+        ...("error" in multiplier ? multiplier.error : {}),
+      },
+    }
+  }
+
+  const values = await db
+    .update(exerciseVariants)
+    .set({
+      name: name.value,
+      difficultyMultiplier: multiplier.value,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(exerciseVariants.id, input.id),
+        eq(exerciseVariants.userId, userId),
+        isNull(exerciseVariants.archivedAt)
+      )
+    )
+    .returning()
+    .all()
+  if (values.length === 0) return { ok: false, error: "not_found" }
+  return { ok: true, value: values[0] }
+}
+
+export async function archiveExerciseVariant(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  id: string,
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseVariants.$inferSelect>> {
+  const values = await db
+    .update(exerciseVariants)
+    .set({ archivedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(exerciseVariants.id, id),
+        eq(exerciseVariants.userId, userId),
+        isNull(exerciseVariants.archivedAt)
+      )
+    )
+    .returning()
+    .all()
+  if (values.length === 0) return { ok: false, error: "not_found" }
+  return { ok: true, value: values[0] }
+}
