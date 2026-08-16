@@ -4,15 +4,15 @@ import { getLoginHref, getSafeReturnTo } from "./access"
 
 describe("authentication redirects", () => {
   it("preserves an application path and query for login", () => {
-    expect(getLoginHref("/sample-two", "?period=month")).toBe(
-      "/login?returnTo=%2Fsample-two%3Fperiod%3Dmonth"
+    expect(getLoginHref("/history", "?period=month")).toBe(
+      "/login?returnTo=%2Fhistory%3Fperiod%3Dmonth"
     )
     expect(getLoginHref("/", "")).toBe("/login")
   })
 
   it("accepts only local return destinations", () => {
-    expect(getSafeReturnTo("/sample-three?day=1#plan")).toBe(
-      "/sample-three?day=1#plan"
+    expect(getSafeReturnTo("/record?day=1#workout")).toBe(
+      "/record?day=1#workout"
     )
     expect(getSafeReturnTo("https://attacker.example/path")).toBeUndefined()
     expect(getSafeReturnTo("//attacker.example/path")).toBeUndefined()

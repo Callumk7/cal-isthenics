@@ -23,22 +23,22 @@ describe("root authentication guard", () => {
   it("redirects an unauthenticated SSR or client route load to login", async () => {
     getAuthState.mockResolvedValue({ authenticated: false })
 
-    await expect(runBeforeLoad("/sample")).rejects.toMatchObject({
-      options: { href: "/login?returnTo=%2Fsample" },
+    await expect(runBeforeLoad("/progress")).rejects.toMatchObject({
+      options: { href: "/login?returnTo=%2Fprogress" },
     })
   })
 
   it("allows authenticated app route loads", async () => {
     getAuthState.mockResolvedValue({ authenticated: true })
 
-    await expect(runBeforeLoad("/sample")).resolves.toBeUndefined()
+    await expect(runBeforeLoad("/progress")).resolves.toBeUndefined()
   })
 
   it("redirects an authenticated user away from login", async () => {
     getAuthState.mockResolvedValue({ authenticated: true })
 
     await expect(runBeforeLoad("/login")).rejects.toMatchObject({
-      options: { href: "/sample" },
+      options: { href: "/progress" },
     })
   })
 
@@ -46,9 +46,9 @@ describe("root authentication guard", () => {
     getAuthState.mockResolvedValue({ authenticated: true })
 
     await expect(
-      runBeforeLoad("/login", "?returnTo=%2Fsample-two%3Fperiod%3Dmonth")
+      runBeforeLoad("/login", "?returnTo=%2Fhistory%3Fperiod%3Dmonth")
     ).rejects.toMatchObject({
-      options: { href: "/sample-two?period=month" },
+      options: { href: "/history?period=month" },
     })
   })
 
@@ -57,6 +57,6 @@ describe("root authentication guard", () => {
 
     await expect(
       runBeforeLoad("/login", "?returnTo=https%3A%2F%2Fattacker.example")
-    ).rejects.toMatchObject({ options: { href: "/sample" } })
+    ).rejects.toMatchObject({ options: { href: "/progress" } })
   })
 })
