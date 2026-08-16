@@ -1,7 +1,15 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import {
+  HeadContent,
+  Scripts,
+  createRootRoute,
+  redirect,
+  useRouterState,
+} from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 
+import { getAuthRedirect } from "@/auth/access"
+import { getAuthState } from "@/auth/server-functions"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   SidebarInset,
@@ -13,6 +21,11 @@ import { Separator } from "@/components/ui/separator"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    const { authenticated } = await getAuthState()
+    const destination = getAuthRedirect(location.pathname, authenticated)
+    if (destination) throw redirect({ to: destination })
+  },
   head: () => ({
     meta: [
       {
@@ -44,23 +57,30 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const isLogin = useRouterState({
+    select: (state) => state.location.pathname === "/login",
+  })
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset>
-            <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur-sm">
-              <SidebarTrigger />
-              <Separator orientation="vertical" className="h-4" />
-              <span className="text-xs font-medium">Training workspace</span>
-            </header>
-            {children}
-          </SidebarInset>
-        </SidebarProvider>
+        {isLogin ? (
+          children
+        ) : (
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur-sm">
+                <SidebarTrigger />
+                <Separator orientation="vertical" className="h-4" />
+                <span className="text-xs font-medium">Training workspace</span>
+              </header>
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+        )}
         <TanStackDevtools
           config={{
             position: "bottom-right",

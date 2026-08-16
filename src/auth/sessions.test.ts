@@ -39,25 +39,46 @@ describe("authentication persistence", () => {
     expect(values.mock.calls[0][0].tokenHash).not.toBe(token)
   })
 
-  it("looks up active sessions and can revoke them by hashed token", async () => {
-    const findFirst = vi.fn().mockResolvedValue({ userId: "owner" })
-    const where = vi.fn().mockResolvedValue(undefined)
-    const set = vi.fn(() => ({ where }))
-    const db = {
-      query: { sessions: { findFirst } },
-      update: vi.fn(() => ({ set })),
-    } as never
-
-    await expect(
-      findActiveSession(db, "secret-token", new Date("2029-01-01"))
-    ).resolves.toEqual({
+  it("returns only unexpired, unrevoked sessions", async () => {
+    const activeSession = {
       userId: "owner",
-    })
-    await revokeSession(db, "secret-token", new Date("2029-01-02"))
+      expiresAt: new Date("2029-01-02"),
+      revokedAt: null,
+    }
+    const findFirst = vi
+      .fn()
+      .mockResolvedValueOnce(activeSession)
+      .mockResolvedValueOnce({
+        ...activeSession,
+        expiresAt: new Date("2029-01-01"),
+      })
+      .mockResolvedValueOnce({
+        ...activeSession,
+        revokedAt: new Date("2028-12-31"),
+      })
+      .mockResolvedValueOnce(undefined)
+    const db = { query: { sessions: { findFirst } } } as never
+    const now = new Date("2029-01-01")
+
+    await expect(findActiveSession(db, "active", now)).resolves.toEqual(
+      activeSession
+    )
+    await expect(findActiveSession(db, "expired", now)).resolves.toBeUndefined()
+    await expect(findActiveSession(db, "revoked", now)).resolves.toBeUndefined()
+    await expect(findActiveSession(db, "missing", now)).resolves.toBeUndefined()
 
     expect(findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ with: { user: true } })
     )
+  })
+
+  it("revokes sessions by their hashed token", async () => {
+    const where = vi.fn().mockResolvedValue(undefined)
+    const set = vi.fn(() => ({ where }))
+    const db = { update: vi.fn(() => ({ set })) } as never
+
+    await revokeSession(db, "secret-token", new Date("2029-01-02"))
+
     expect(set).toHaveBeenCalledWith({ revokedAt: new Date("2029-01-02") })
     expect(where).toHaveBeenCalledOnce()
   })

@@ -1,14 +1,11 @@
-import { and, eq, gt, isNull } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import type { DrizzleD1Database } from "drizzle-orm/d1"
 
+import type * as schema from "../db/schema"
 import { sessions } from "../db/schema"
-import type { users } from "../db/schema"
 import { generateSessionToken, hashSessionToken } from "./crypto"
 
-type Database = DrizzleD1Database<{
-  sessions: typeof sessions
-  users: typeof users
-}>
+type Database = DrizzleD1Database<typeof schema>
 
 export async function createSession(
   db: Database,
@@ -29,14 +26,14 @@ export async function findActiveSession(
   now = new Date()
 ) {
   const tokenHash = await hashSessionToken(token)
-  return db.query.sessions.findFirst({
-    where: and(
-      eq(sessions.tokenHash, tokenHash),
-      isNull(sessions.revokedAt),
-      gt(sessions.expiresAt, now)
-    ),
+  const session = await db.query.sessions.findFirst({
+    where: eq(sessions.tokenHash, tokenHash),
     with: { user: true },
   })
+
+  if (!session || session.revokedAt || session.expiresAt <= now)
+    return undefined
+  return session
 }
 
 export async function revokeSession(
