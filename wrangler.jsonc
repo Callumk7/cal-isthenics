@@ -13,13 +13,8 @@
 		{
 			"binding": "DB",
 			"database_name": "cal-isthenics-db",
-			"migrations_dir": "./drizzle"
-		},
-		{
-			"binding": "cal_isthenics_db",
-			"database_name": "cal-isthenics-db",
 			"database_id": "7923b5f2-1c56-48e6-b00a-598a03dfad69",
-			"remote": true
+			"migrations_dir": "./drizzle"
 		}
 	]
 }
