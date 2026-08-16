@@ -6,7 +6,7 @@ const invalidArguments = process.argv
   .slice(2)
   .filter((argument) => argument !== "--remote" && argument !== "--local")
 if (invalidArguments.length) {
-  console.error("Usage: pnpm auth:provision -- [--local|--remote]")
+  console.error("Usage: pnpm auth:provision [--local|--remote]")
   process.exit(1)
 }
 
@@ -29,7 +29,8 @@ if (!password) {
 
 const encoder = new TextEncoder()
 const salt = webcrypto.getRandomValues(new Uint8Array(16))
-const iterations = 600_000
+// Keep in sync with src/auth/crypto.ts and workerd's PBKDF2 limit.
+const iterations = 100_000
 const key = await webcrypto.subtle.importKey(
   "raw",
   encoder.encode(password),

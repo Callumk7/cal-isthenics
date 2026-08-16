@@ -89,7 +89,7 @@ There is no public signup. After applying migrations, pipe a password to the pro
  read -rsp "Password: " CAL_PASSWORD; printf '%s' "$CAL_PASSWORD" | pnpm auth:provision; unset CAL_PASSWORD
 
 # Production D1: authenticate Wrangler first and explicitly select --remote
- read -rsp "Password: " CAL_PASSWORD; printf '%s' "$CAL_PASSWORD" | pnpm auth:provision -- --remote; unset CAL_PASSWORD
+ read -rsp "Password: " CAL_PASSWORD; printf '%s' "$CAL_PASSWORD" | pnpm auth:provision --remote; unset CAL_PASSWORD
 ```
 
 The command can instead read a temporary `CAL_PASSWORD` environment variable, which is useful for a secret-injected non-interactive environment. Do not put that value in `.env`, shell history, CI configuration, or the repository. Running the command again replaces the owner's password and deletes all of its sessions, providing a repeatable recovery and revocation workflow.

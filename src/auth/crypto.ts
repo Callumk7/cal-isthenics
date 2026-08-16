@@ -1,5 +1,6 @@
 const encoder = new TextEncoder()
-const iterations = 600_000
+// workerd currently rejects PBKDF2 requests above 100,000 iterations.
+export const PASSWORD_HASH_ITERATIONS = 100_000
 
 function encode(bytes: Uint8Array) {
   return btoa(String.fromCharCode(...bytes))
@@ -21,11 +22,16 @@ export async function hashPassword(password: string) {
     ["deriveBits"]
   )
   const hash = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    {
+      name: "PBKDF2",
+      hash: "SHA-256",
+      salt,
+      iterations: PASSWORD_HASH_ITERATIONS,
+    },
     key,
     256
   )
-  return `pbkdf2-sha256$${iterations}$${encode(salt)}$${encode(new Uint8Array(hash))}`
+  return `pbkdf2-sha256$${PASSWORD_HASH_ITERATIONS}$${encode(salt)}$${encode(new Uint8Array(hash))}`
 }
 
 export async function verifyPassword(password: string, encodedHash: string) {
@@ -33,7 +39,12 @@ export async function verifyPassword(password: string, encodedHash: string) {
   if (algorithm !== "pbkdf2-sha256" || !count || !saltValue || !expectedValue)
     return false
   const iterationCount = Number(count)
-  if (!Number.isSafeInteger(iterationCount) || iterationCount < 1) return false
+  if (
+    !Number.isSafeInteger(iterationCount) ||
+    iterationCount < 1 ||
+    iterationCount > PASSWORD_HASH_ITERATIONS
+  )
+    return false
 
   try {
     const key = await crypto.subtle.importKey(
