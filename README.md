@@ -1,6 +1,6 @@
 # Cal Isthenics
 
-A fresh web app for personalised calisthenics training. The current product surface is a landing page for **FORM**, focused on adaptive programming, progress tracking, consistency, mobility, and long-term bodyweight strength development.
+A web app for personalised calisthenics training. **FORM** currently provides a single-owner authenticated application shell for workout tracking.
 
 ## Tech stack
 
@@ -25,7 +25,7 @@ Start the local development server:
 pnpm dev
 ```
 
-The app runs on [http://localhost:3000](http://localhost:3000).
+The app runs on [http://localhost:3000](http://localhost:3000). Apply the D1 migrations and provision the owner account before signing in; see [Authentication operations](./docs/authentication-operations.md).
 
 ## Scripts
 
@@ -85,14 +85,24 @@ Commit generated files in `drizzle/`. Apply migrations locally before testing an
 There is no public signup. After applying migrations, pipe a password to the provisioning command. The script derives a salted PBKDF2-SHA-256 hash before writing to D1; neither the plaintext password nor a raw session token belongs in the database, a migration, or source control.
 
 ```bash
-# Local D1 (the leading space helps keep the command out of shells configured with HISTCONTROL=ignorespace)
- read -rsp "Password: " CAL_PASSWORD; printf '%s' "$CAL_PASSWORD" | pnpm auth:provision; unset CAL_PASSWORD
+# Local D1
+printf 'Password: ' >&2
+IFS= read -r -s CAL_PASSWORD
+printf '\n' >&2
+printf '%s' "$CAL_PASSWORD" | pnpm auth:provision
+unset CAL_PASSWORD
 
 # Production D1: authenticate Wrangler first and explicitly select --remote
- read -rsp "Password: " CAL_PASSWORD; printf '%s' "$CAL_PASSWORD" | pnpm auth:provision --remote; unset CAL_PASSWORD
+printf 'Password: ' >&2
+IFS= read -r -s CAL_PASSWORD
+printf '\n' >&2
+printf '%s' "$CAL_PASSWORD" | pnpm auth:provision --remote
+unset CAL_PASSWORD
 ```
 
 The command can instead read a temporary `CAL_PASSWORD` environment variable, which is useful for a secret-injected non-interactive environment. Do not put that value in `.env`, shell history, CI configuration, or the repository. Running the command again replaces the owner's password and deletes all of its sessions, providing a repeatable recovery and revocation workflow.
+
+For binding requirements, production rollout, security rules, and the deployed/responsive verification checklist, see [Authentication operations](./docs/authentication-operations.md).
 
 The database layer lives in `src/db/` and is **server-side only** — never import it from client components.
 
