@@ -1,14 +1,11 @@
 import { and, eq, gt, isNull } from "drizzle-orm"
 import type { DrizzleD1Database } from "drizzle-orm/d1"
 
+import type * as schema from "../db/schema"
 import { sessions } from "../db/schema"
-import type { users } from "../db/schema"
 import { generateSessionToken, hashSessionToken } from "./crypto"
 
-type Database = DrizzleD1Database<{
-  sessions: typeof sessions
-  users: typeof users
-}>
+type Database = DrizzleD1Database<typeof schema>
 
 export async function createSession(
   db: Database,

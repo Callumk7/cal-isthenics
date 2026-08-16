@@ -4,7 +4,12 @@ import {
   DumbbellIcon,
   HeartPulseIcon,
   ZapIcon,
+  LogOutIcon,
 } from "lucide-react"
+import { useState } from "react"
+
+import { logout } from "@/auth/server-functions"
+import { Button } from "@/components/ui/button"
 
 import {
   Sidebar,
@@ -39,6 +44,7 @@ const navigation = [
 ]
 
 export function AppSidebar() {
+  const [loggingOut, setLoggingOut] = useState(false)
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -91,6 +97,21 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
+        <Button
+          variant="ghost"
+          className="justify-start group-data-[collapsible=icon]:px-2"
+          isDisabled={loggingOut}
+          onPress={async () => {
+            setLoggingOut(true)
+            await logout()
+            window.location.assign("/login")
+          }}
+        >
+          <LogOutIcon />
+          <span className="group-data-[collapsible=icon]:hidden">
+            {loggingOut ? "Signing out…" : "Sign out"}
+          </span>
+        </Button>
         <p className="px-2 py-1 text-[10px] text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
           Build strength. Move well.
         </p>

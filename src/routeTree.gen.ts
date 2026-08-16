@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as SampleRouteImport } from './routes/sample'
 import { Route as SampleThreeRouteImport } from './routes/sample-three'
 import { Route as SampleTwoRouteImport } from './routes/sample-two'
@@ -17,6 +18,11 @@ import { Route as SampleTwoRouteImport } from './routes/sample-two'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SampleRoute = SampleRouteImport.update({
@@ -37,12 +43,14 @@ const SampleTwoRoute = SampleTwoRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/sample': typeof SampleRoute
   '/sample-three': typeof SampleThreeRoute
   '/sample-two': typeof SampleTwoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/sample': typeof SampleRoute
   '/sample-three': typeof SampleThreeRoute
   '/sample-two': typeof SampleTwoRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/sample': typeof SampleRoute
   '/sample-three': typeof SampleThreeRoute
   '/sample-two': typeof SampleTwoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sample' | '/sample-three' | '/sample-two'
+  fullPaths: '/' | '/login' | '/sample' | '/sample-three' | '/sample-two'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sample' | '/sample-three' | '/sample-two'
-  id: '__root__' | '/' | '/sample' | '/sample-three' | '/sample-two'
+  to: '/' | '/login' | '/sample' | '/sample-three' | '/sample-two'
+  id: '__root__' | '/' | '/login' | '/sample' | '/sample-three' | '/sample-two'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   SampleRoute: typeof SampleRoute
   SampleThreeRoute: typeof SampleThreeRoute
   SampleTwoRoute: typeof SampleTwoRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sample': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   SampleRoute: SampleRoute,
   SampleThreeRoute: SampleThreeRoute,
   SampleTwoRoute: SampleTwoRoute,
