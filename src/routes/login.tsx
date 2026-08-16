@@ -3,18 +3,23 @@ import type { FormEvent } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { LockKeyholeIcon, ZapIcon } from "lucide-react"
 
+import { DEFAULT_AUTHENTICATED_PATH, getSafeReturnTo } from "@/auth/access"
 import { login } from "@/auth/server-functions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    returnTo: getSafeReturnTo(search.returnTo),
+  }),
   component: LoginPage,
   head: () => ({ meta: [{ title: "Sign in — FORM" }] }),
 })
 
 function LoginPage() {
   const navigate = useNavigate()
+  const { returnTo } = Route.useSearch()
   const passwordRef = useRef<HTMLInputElement>(null)
   const errorRef = useRef<HTMLParagraphElement>(null)
   const [error, setError] = useState("")
@@ -35,7 +40,7 @@ function LoginPage() {
         data: { password: String(form.get("password") ?? "") },
       })
       if (result.ok) {
-        await navigate({ to: "/sample" })
+        await navigate({ href: returnTo ?? DEFAULT_AUTHENTICATED_PATH })
       } else {
         setError(result.error)
       }

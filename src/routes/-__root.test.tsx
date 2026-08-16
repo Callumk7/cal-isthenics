@@ -11,8 +11,10 @@ vi.mock("@/auth/server-functions", () => ({
   logout: vi.fn(),
 }))
 
-async function runBeforeLoad(pathname: string) {
-  return Route.options.beforeLoad?.({ location: { pathname } } as never)
+async function runBeforeLoad(pathname: string, searchStr = "") {
+  return Route.options.beforeLoad?.({
+    location: { pathname, searchStr },
+  } as never)
 }
 
 describe("root authentication guard", () => {
@@ -22,7 +24,7 @@ describe("root authentication guard", () => {
     getAuthState.mockResolvedValue({ authenticated: false })
 
     await expect(runBeforeLoad("/sample")).rejects.toMatchObject({
-      options: { to: "/login" },
+      options: { href: "/login?returnTo=%2Fsample" },
     })
   })
 
@@ -36,7 +38,25 @@ describe("root authentication guard", () => {
     getAuthState.mockResolvedValue({ authenticated: true })
 
     await expect(runBeforeLoad("/login")).rejects.toMatchObject({
-      options: { to: "/sample" },
+      options: { href: "/sample" },
     })
+  })
+
+  it("returns an authenticated user to a safe preserved destination", async () => {
+    getAuthState.mockResolvedValue({ authenticated: true })
+
+    await expect(
+      runBeforeLoad("/login", "?returnTo=%2Fsample-two%3Fperiod%3Dmonth")
+    ).rejects.toMatchObject({
+      options: { href: "/sample-two?period=month" },
+    })
+  })
+
+  it("does not redirect an authenticated user to an external destination", async () => {
+    getAuthState.mockResolvedValue({ authenticated: true })
+
+    await expect(
+      runBeforeLoad("/login", "?returnTo=https%3A%2F%2Fattacker.example")
+    ).rejects.toMatchObject({ options: { href: "/sample" } })
   })
 })

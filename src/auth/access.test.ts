@@ -1,20 +1,26 @@
 import { describe, expect, it } from "vitest"
 
-import { getAuthRedirect } from "./access"
+import { getLoginHref, getSafeReturnTo } from "./access"
 
-describe("authentication route boundary", () => {
-  it("redirects unauthenticated app requests to login", () => {
-    expect(getAuthRedirect("/sample", false)).toBe("/login")
-    expect(getAuthRedirect("/sample-two", false)).toBe("/login")
-    expect(getAuthRedirect("/", false)).toBe("/login")
+describe("authentication redirects", () => {
+  it("preserves an application path and query for login", () => {
+    expect(getLoginHref("/sample-two", "?period=month")).toBe(
+      "/login?returnTo=%2Fsample-two%3Fperiod%3Dmonth"
+    )
+    expect(getLoginHref("/", "")).toBe("/login")
   })
 
-  it("allows authenticated app requests", () => {
-    expect(getAuthRedirect("/sample", true)).toBeNull()
+  it("accepts only local return destinations", () => {
+    expect(getSafeReturnTo("/sample-three?day=1#plan")).toBe(
+      "/sample-three?day=1#plan"
+    )
+    expect(getSafeReturnTo("https://attacker.example/path")).toBeUndefined()
+    expect(getSafeReturnTo("//attacker.example/path")).toBeUndefined()
+    expect(getSafeReturnTo("/\\attacker.example/path")).toBeUndefined()
   })
 
-  it("keeps unauthenticated users on login and redirects authenticated users", () => {
-    expect(getAuthRedirect("/login", false)).toBeNull()
-    expect(getAuthRedirect("/login", true)).toBe("/sample")
+  it("does not allow login to recursively return to itself", () => {
+    expect(getSafeReturnTo("/login")).toBeUndefined()
+    expect(getSafeReturnTo(undefined)).toBeUndefined()
   })
 })
