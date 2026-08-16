@@ -1,6 +1,6 @@
 # Cal Isthenics
 
-A fresh web app for personalised calisthenics training. The current product surface is a landing page for **FORM**, focused on adaptive programming, progress tracking, consistency, mobility, and long-term bodyweight strength development.
+A web app for personalised calisthenics training. **FORM** currently provides a single-owner authenticated application shell for workout tracking.
 
 ## Tech stack
 
@@ -25,7 +25,7 @@ Start the local development server:
 pnpm dev
 ```
 
-The app runs on [http://localhost:3000](http://localhost:3000).
+The app runs on [http://localhost:3000](http://localhost:3000). Apply the D1 migrations and provision the owner account before signing in; see [Authentication operations](./docs/authentication-operations.md).
 
 ## Scripts
 
@@ -93,6 +93,8 @@ There is no public signup. After applying migrations, pipe a password to the pro
 ```
 
 The command can instead read a temporary `CAL_PASSWORD` environment variable, which is useful for a secret-injected non-interactive environment. Do not put that value in `.env`, shell history, CI configuration, or the repository. Running the command again replaces the owner's password and deletes all of its sessions, providing a repeatable recovery and revocation workflow.
+
+For binding requirements, production rollout, security rules, and the deployed/responsive verification checklist, see [Authentication operations](./docs/authentication-operations.md).
 
 The database layer lives in `src/db/` and is **server-side only** — never import it from client components.
 
