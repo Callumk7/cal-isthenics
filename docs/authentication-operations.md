@@ -25,7 +25,9 @@ The session cookie is `HttpOnly`, `Secure`, `SameSite=Lax`, scoped to `/`, and e
 2. Provision (or replace) the local owner password without putting it in command history:
 
    ```bash
-    read -rsp "Password: " CAL_PASSWORD
+   printf 'Password: ' >&2
+   IFS= read -r -s CAL_PASSWORD
+   printf '\n' >&2
    printf '%s' "$CAL_PASSWORD" | pnpm auth:provision
    unset CAL_PASSWORD
    ```
@@ -72,7 +74,9 @@ pnpm deploy
 Provision the production owner only after its migrations have applied:
 
 ```bash
- read -rsp "Password: " CAL_PASSWORD
+printf 'Password: ' >&2
+IFS= read -r -s CAL_PASSWORD
+printf '\n' >&2
 printf '%s' "$CAL_PASSWORD" | pnpm auth:provision --remote
 unset CAL_PASSWORD
 ```
@@ -83,7 +87,7 @@ Re-provisioning immediately invalidates all existing production sessions. Treat 
 
 - Never log request bodies, cookie values, password values, password hashes, or session database rows.
 - Authentication responses contain only an `ok` flag and a fixed error message; auth-state responses contain only `authenticated`.
-- Invalid credentials use the same response whether the owner is absent or the password is wrong.
+- Invalid credentials use the same response and password-verification work whether the owner is absent or the password is wrong.
 - Protected server operations must call `requireCurrentSession()`; a client route guard is not an authorization boundary.
 - Logout revokes the hashed D1 session before deleting the browser cookie.
 - To inspect production failures, use status/error filtering rather than logging request data: `pnpm exec wrangler tail --status error`.

@@ -9,7 +9,7 @@ import {
 
 import { db } from "../db/client"
 import { users } from "../db/schema"
-import { verifyPassword } from "./crypto"
+import { PASSWORD_HASH_ITERATIONS, verifyPassword } from "./crypto"
 import {
   SESSION_COOKIE_NAME,
   SESSION_DURATION_SECONDS,
@@ -21,6 +21,8 @@ import { getCurrentSession, requireCurrentSession } from "./current-session"
 const invalidCredentials = "The password you entered is incorrect."
 const tooManyAttempts =
   "Too many sign-in attempts. Please wait a minute and try again."
+// Keep absent-owner and wrong-password requests on the same expensive path.
+const dummyPasswordHash = `pbkdf2-sha256$${PASSWORD_HASH_ITERATIONS}$AAAAAAAAAAAAAAAAAAAAAA==$1lDBLO4Wr+cHWQ015bpwjGgVSUn43R0NiPnHC2mWVUg=`
 
 export const getAuthState = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -40,8 +42,12 @@ export const login = createServerFn({ method: "POST" })
     }
 
     const user = await db.select().from(users).limit(1).get()
+    const passwordMatches = await verifyPassword(
+      data.password,
+      user?.passwordHash ?? dummyPasswordHash
+    )
 
-    if (!user || !(await verifyPassword(data.password, user.passwordHash))) {
+    if (!user || !passwordMatches) {
       return { ok: false as const, error: invalidCredentials }
     }
 

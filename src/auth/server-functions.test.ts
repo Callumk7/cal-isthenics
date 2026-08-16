@@ -43,7 +43,10 @@ vi.mock("../db/client", () => ({
     }),
   },
 }))
-vi.mock("./crypto", () => ({ verifyPassword: mocks.verifyPassword }))
+vi.mock("./crypto", () => ({
+  PASSWORD_HASH_ITERATIONS: 100_000,
+  verifyPassword: mocks.verifyPassword,
+}))
 vi.mock("./sessions", () => ({
   createSession: mocks.createSession,
   revokeSession: mocks.revokeSession,
@@ -112,7 +115,10 @@ describe("authentication server operations", () => {
       ok: false,
       error: "The password you entered is incorrect.",
     })
-    expect(mocks.verifyPassword).not.toHaveBeenCalled()
+    expect(mocks.verifyPassword).toHaveBeenCalledWith(
+      "anything",
+      expect.stringMatching(/^pbkdf2-sha256\$100000\$/)
+    )
   })
 
   it("rate limits login before reading credentials", async () => {
