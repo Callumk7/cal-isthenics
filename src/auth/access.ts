@@ -1,4 +1,4 @@
-export const DEFAULT_AUTHENTICATED_PATH = "/sample"
+export const DEFAULT_AUTHENTICATED_PATH = "/progress"
 
 /**
  * Accept only same-origin application paths as post-login destinations.

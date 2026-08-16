@@ -69,7 +69,7 @@ function LoginPage() {
             Welcome back
           </h1>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            Enter your password to open your training workspace.
+            Enter your password to open your workout log.
           </p>
         </div>
 

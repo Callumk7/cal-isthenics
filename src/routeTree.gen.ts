@@ -10,14 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExercisesRouteImport } from './routes/exercises'
+import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as SampleRouteImport } from './routes/sample'
-import { Route as SampleThreeRouteImport } from './routes/sample-three'
-import { Route as SampleTwoRouteImport } from './routes/sample-two'
+import { Route as ProgressRouteImport } from './routes/progress'
+import { Route as RecordRouteImport } from './routes/record'
+import { Route as TemplatesRouteImport } from './routes/templates'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExercisesRoute = ExercisesRouteImport.update({
+  id: '/exercises',
+  path: '/exercises',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -25,58 +37,88 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SampleRoute = SampleRouteImport.update({
-  id: '/sample',
-  path: '/sample',
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SampleThreeRoute = SampleThreeRouteImport.update({
-  id: '/sample-three',
-  path: '/sample-three',
+const RecordRoute = RecordRouteImport.update({
+  id: '/record',
+  path: '/record',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SampleTwoRoute = SampleTwoRouteImport.update({
-  id: '/sample-two',
-  path: '/sample-two',
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/exercises': typeof ExercisesRoute
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/sample': typeof SampleRoute
-  '/sample-three': typeof SampleThreeRoute
-  '/sample-two': typeof SampleTwoRoute
+  '/progress': typeof ProgressRoute
+  '/record': typeof RecordRoute
+  '/templates': typeof TemplatesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/exercises': typeof ExercisesRoute
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/sample': typeof SampleRoute
-  '/sample-three': typeof SampleThreeRoute
-  '/sample-two': typeof SampleTwoRoute
+  '/progress': typeof ProgressRoute
+  '/record': typeof RecordRoute
+  '/templates': typeof TemplatesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/exercises': typeof ExercisesRoute
+  '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
-  '/sample': typeof SampleRoute
-  '/sample-three': typeof SampleThreeRoute
-  '/sample-two': typeof SampleTwoRoute
+  '/progress': typeof ProgressRoute
+  '/record': typeof RecordRoute
+  '/templates': typeof TemplatesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/sample' | '/sample-three' | '/sample-two'
+  fullPaths:
+    | '/'
+    | '/exercises'
+    | '/history'
+    | '/login'
+    | '/progress'
+    | '/record'
+    | '/templates'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/sample' | '/sample-three' | '/sample-two'
-  id: '__root__' | '/' | '/login' | '/sample' | '/sample-three' | '/sample-two'
+  to:
+    | '/'
+    | '/exercises'
+    | '/history'
+    | '/login'
+    | '/progress'
+    | '/record'
+    | '/templates'
+  id:
+    | '__root__'
+    | '/'
+    | '/exercises'
+    | '/history'
+    | '/login'
+    | '/progress'
+    | '/record'
+    | '/templates'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ExercisesRoute: typeof ExercisesRoute
+  HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
-  SampleRoute: typeof SampleRoute
-  SampleThreeRoute: typeof SampleThreeRoute
-  SampleTwoRoute: typeof SampleTwoRoute
+  ProgressRoute: typeof ProgressRoute
+  RecordRoute: typeof RecordRoute
+  TemplatesRoute: typeof TemplatesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -88,6 +130,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exercises': {
+      id: '/exercises'
+      path: '/exercises'
+      fullPath: '/exercises'
+      preLoaderRoute: typeof ExercisesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -95,25 +151,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sample': {
-      id: '/sample'
-      path: '/sample'
-      fullPath: '/sample'
-      preLoaderRoute: typeof SampleRouteImport
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sample-three': {
-      id: '/sample-three'
-      path: '/sample-three'
-      fullPath: '/sample-three'
-      preLoaderRoute: typeof SampleThreeRouteImport
+    '/record': {
+      id: '/record'
+      path: '/record'
+      fullPath: '/record'
+      preLoaderRoute: typeof RecordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sample-two': {
-      id: '/sample-two'
-      path: '/sample-two'
-      fullPath: '/sample-two'
-      preLoaderRoute: typeof SampleTwoRouteImport
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -121,10 +177,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExercisesRoute: ExercisesRoute,
+  HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
-  SampleRoute: SampleRoute,
-  SampleThreeRoute: SampleThreeRoute,
-  SampleTwoRoute: SampleTwoRoute,
+  ProgressRoute: ProgressRoute,
+  RecordRoute: RecordRoute,
+  TemplatesRoute: TemplatesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
