@@ -150,7 +150,7 @@ export const workouts = sqliteTable(
     index("workouts_user_date_idx").on(table.userId, table.workoutDate),
     check(
       "workouts_valid_date_check",
-      sql`length(${table.workoutDate}) = 10 and date(${table.workoutDate}) = ${table.workoutDate}`
+      sql`length(${table.workoutDate}) = 10 and coalesce(date(${table.workoutDate}), '') = ${table.workoutDate}`
     ),
   ]
 )

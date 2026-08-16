@@ -782,7 +782,7 @@
       "checkConstraints": {
         "workouts_valid_date_check": {
           "name": "workouts_valid_date_check",
-          "value": "length(\"workouts\".\"workout_date\") = 10 and date(\"workouts\".\"workout_date\") = \"workouts\".\"workout_date\""
+          "value": "length(\"workouts\".\"workout_date\") = 10 and coalesce(date(\"workouts\".\"workout_date\"), '') = \"workouts\".\"workout_date\""
         }
       }
     }

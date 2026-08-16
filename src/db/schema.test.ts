@@ -86,7 +86,7 @@ describe("training schema", () => {
     ).toHaveLength(2)
     expect(migration.match(/CHECK\([^)]*"position" >= 0\)/g)).toHaveLength(3)
     expect(migration).toContain(
-      'length("workouts"."workout_date") = 10 and date("workouts"."workout_date") = "workouts"."workout_date"'
+      'length("workouts"."workout_date") = 10 and coalesce(date("workouts"."workout_date"), \'\') = "workouts"."workout_date"'
     )
   })
 

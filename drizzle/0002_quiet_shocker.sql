@@ -92,7 +92,7 @@ CREATE TABLE `workouts` (
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
-	CONSTRAINT "workouts_valid_date_check" CHECK(length("workouts"."workout_date") = 10 and date("workouts"."workout_date") = "workouts"."workout_date")
+	CONSTRAINT "workouts_valid_date_check" CHECK(length("workouts"."workout_date") = 10 and coalesce(date("workouts"."workout_date"), '') = "workouts"."workout_date")
 );
 --> statement-breakpoint
 CREATE INDEX `workouts_user_date_idx` ON `workouts` (`user_id`,`workout_date`);
