@@ -63,34 +63,49 @@ pnpm test:watch  # watch mode for local development
 
 Test files are colocated next to the code they cover and named `*.test.ts` / `*.test.tsx` (e.g. `src/lib/utils.test.ts`). A setup file at `src/test/setup.ts` installs `@testing-library/jest-dom` matchers automatically.
 
-CI runs `pnpm test`, `pnpm typecheck`, and `pnpm lint` on every push to `main` and on pull requests.
+CI checks generated Cloudflare types and D1 migration drift, applies migrations to an isolated local D1 database, and runs the tests, typecheck, lint, and production build on every push to `main` and on pull requests.
 
 ## Database
 
-Drizzle ORM with a local SQLite database (`better-sqlite3`).
+Drizzle ORM with Cloudflare D1. Wrangler provides an isolated local D1 database during development and the `DB` binding in production.
 
 Database scripts:
 
 ```bash
-pnpm db:generate  # generate SQL migrations from the schema
-pnpm db:migrate   # apply pending migrations to the local SQLite file
-pnpm db:push      # push schema changes directly (development shortcut)
-pnpm db:studio    # open Drizzle Studio in the browser
+pnpm db:generate        # generate a SQL migration from src/db/schema.ts
+pnpm db:migrate         # apply pending migrations to local D1
+pnpm db:migrate:remote  # apply pending migrations to production D1
 ```
 
-The local database file lives at `./sqlite/cal.db` by default. Override with the `DATABASE_URL` environment variable.
+Commit generated files in `drizzle/`. Apply migrations locally before testing and remotely before deploying code that depends on them.
 
 The database layer lives in `src/db/` and is **server-side only** — never import it from client components.
 
 ## Deployment
 
-Deployment is not defined yet. For now, verify the app builds successfully with:
+The app deploys to Cloudflare Workers using Wrangler and the official Cloudflare Vite plugin.
+
+Authenticate once and create the production D1 database. Wrangler resolves the configured binding by the `cal-isthenics-db` database name:
 
 ```bash
-pnpm build
+pnpm exec wrangler login
+pnpm exec wrangler d1 create cal-isthenics-db
 ```
 
-A TanStack Start-compatible deployment target and any required environment configuration will be documented once selected.
+Then migrate and deploy:
+
+```bash
+pnpm db:migrate:remote
+pnpm deploy
+```
+
+Useful Cloudflare commands:
+
+```bash
+pnpm cf-typegen             # regenerate Worker binding/runtime types
+pnpm exec wrangler whoami   # check Cloudflare authentication
+pnpm exec wrangler deploy --dry-run
+```
 
 ## Agent context
 

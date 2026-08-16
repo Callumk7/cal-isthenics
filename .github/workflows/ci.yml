@@ -14,7 +14,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 11
+          version: 10.34.4
 
       - uses: actions/setup-node@v4
         with:
@@ -27,8 +27,20 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Check Cloudflare types
+        run: pnpm cf-typegen:check
+
+      - name: Check D1 migration drift
+        run: pnpm db:generate:check
+
+      - name: Apply D1 migrations locally
+        run: pnpm db:migrate
+
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Lint
         run: pnpm lint
+
+      - name: Build
+        run: pnpm build
