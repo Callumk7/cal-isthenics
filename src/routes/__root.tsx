@@ -8,7 +8,11 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 
-import { getAuthRedirect } from "@/auth/access"
+import {
+  DEFAULT_AUTHENTICATED_PATH,
+  getLoginHref,
+  getSafeReturnTo,
+} from "@/auth/access"
 import { getAuthState } from "@/auth/server-functions"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
@@ -23,8 +27,20 @@ import appCss from "../styles.css?url"
 export const Route = createRootRoute({
   beforeLoad: async ({ location }) => {
     const { authenticated } = await getAuthState()
-    const destination = getAuthRedirect(location.pathname, authenticated)
-    if (destination) throw redirect({ to: destination })
+    const isLogin = location.pathname === "/login"
+
+    if (!authenticated && !isLogin) {
+      throw redirect({
+        href: getLoginHref(location.pathname, location.searchStr),
+      })
+    }
+
+    if (authenticated && isLogin) {
+      const returnTo = getSafeReturnTo(
+        new URLSearchParams(location.searchStr).get("returnTo")
+      )
+      throw redirect({ href: returnTo ?? DEFAULT_AUTHENTICATED_PATH })
+    }
   },
   head: () => ({
     meta: [

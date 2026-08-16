@@ -15,7 +15,8 @@ import {
   SESSION_DURATION_SECONDS,
   sessionCookieOptions,
 } from "./config"
-import { createSession, findActiveSession, revokeSession } from "./sessions"
+import { createSession, revokeSession } from "./sessions"
+import { getCurrentSession, requireCurrentSession } from "./current-session"
 
 const invalidCredentials = "The password you entered is incorrect."
 const tooManyAttempts =
@@ -23,10 +24,7 @@ const tooManyAttempts =
 
 export const getAuthState = createServerFn({ method: "GET" }).handler(
   async () => {
-    const token = getCookie(SESSION_COOKIE_NAME)
-    if (!token || token.length > 256) return { authenticated: false }
-
-    const session = await findActiveSession(db, token)
+    const session = await getCurrentSession()
     return { authenticated: Boolean(session) }
   }
 )
@@ -58,6 +56,7 @@ export const login = createServerFn({ method: "POST" })
   })
 
 export const logout = createServerFn({ method: "POST" }).handler(async () => {
+  await requireCurrentSession()
   const token = getCookie(SESSION_COOKIE_NAME)
   try {
     if (token && token.length <= 256) await revokeSession(db, token)
