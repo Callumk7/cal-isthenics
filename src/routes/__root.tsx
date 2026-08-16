@@ -2,11 +2,14 @@ import {
   HeadContent,
   Scripts,
   createRootRoute,
+  redirect,
   useRouterState,
 } from "@tanstack/react-router"
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools"
 import { TanStackDevtools } from "@tanstack/react-devtools"
 
+import { getAuthRedirect } from "@/auth/access"
+import { getAuthState } from "@/auth/server-functions"
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   SidebarInset,
@@ -18,6 +21,11 @@ import { Separator } from "@/components/ui/separator"
 import appCss from "../styles.css?url"
 
 export const Route = createRootRoute({
+  beforeLoad: async ({ location }) => {
+    const { authenticated } = await getAuthState()
+    const destination = getAuthRedirect(location.pathname, authenticated)
+    if (destination) throw redirect({ to: destination })
+  },
   head: () => ({
     meta: [
       {
