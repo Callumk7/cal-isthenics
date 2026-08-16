@@ -31,14 +31,19 @@ As features grow, prefer keeping route-level composition in `src/routes/`, reusa
 
 ## Testing
 
-Current scripts:
+Vitest + jsdom is configured via `vitest.config.ts` (standalone — does not run the TanStack Start Vite plugin). The setup file is `src/test/setup.ts`, which imports `@testing-library/jest-dom/vitest` matchers and runs `cleanup()` after each test.
 
-- `pnpm test` — run Vitest tests
+Test files are colocated with the code they test and follow the `*.test.ts` / `*.test.tsx` naming convention (e.g. `src/lib/utils.test.ts`). Imports from `vitest` are explicit — globals are off.
+
+Scripts:
+
+- `pnpm test` — run all tests once (used in CI)
+- `pnpm test:watch` — run Vitest in watch mode during development
 - `pnpm typecheck` — run TypeScript without emitting files
 - `pnpm lint` — run ESLint
 - `pnpm check` — check formatting with Prettier
 
-No test structure has been established yet. When adding tests, prefer colocated or clearly discoverable Vitest tests using Testing Library for React UI behaviour.
+CI (`.github/workflows/ci.yml`) runs `pnpm test`, `pnpm typecheck`, and `pnpm lint` on every push to `main` and on pull requests.
 
 ## Deployment
 
