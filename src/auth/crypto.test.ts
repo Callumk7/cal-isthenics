@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  PASSWORD_HASH_ITERATIONS,
   generateSessionToken,
   hashPassword,
   hashSessionToken,
@@ -12,11 +13,15 @@ describe("authentication credentials", () => {
     const hash = await hashPassword("correct horse battery staple")
 
     expect(hash).not.toContain("correct horse battery staple")
+    expect(hash).toContain(`$${PASSWORD_HASH_ITERATIONS}$`)
     await expect(
       verifyPassword("correct horse battery staple", hash)
     ).resolves.toBe(true)
     await expect(verifyPassword("wrong password", hash)).resolves.toBe(false)
     await expect(verifyPassword("anything", "invalid")).resolves.toBe(false)
+    await expect(
+      verifyPassword("anything", `pbkdf2-sha256$100001$c2FsdA==$aGFzaA==`)
+    ).resolves.toBe(false)
   })
 
   it("generates random session tokens and creates deterministic one-way lookup hashes", async () => {
