@@ -54,13 +54,16 @@ pnpm format    # format source files with Prettier
 
 ## Testing
 
-Tests run with Vitest:
+Tests run with Vitest + jsdom. Run them with:
 
 ```bash
-pnpm test
+pnpm test        # run all tests once
+pnpm test:watch  # watch mode for local development
 ```
 
-No formal test layout has been established yet. Prefer clear, discoverable tests using Testing Library for React UI behaviour as the app grows.
+Test files are colocated next to the code they cover and named `*.test.ts` / `*.test.tsx` (e.g. `src/lib/utils.test.ts`). A setup file at `src/test/setup.ts` installs `@testing-library/jest-dom` matchers automatically.
+
+CI runs `pnpm test`, `pnpm typecheck`, and `pnpm lint` on every push to `main` and on pull requests.
 
 ## Database
 
