@@ -1,0 +1,20 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "cal-isthenics",
+	"main": "@tanstack/react-start/server-entry",
+	"compatibility_date": "2026-08-16",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "cal-isthenics-db",
+			"database_id": "7923b5f2-1c56-48e6-b00a-598a03dfad69",
+			"migrations_dir": "./drizzle"
+		}
+	]
+}

@@ -1,8 +1,11 @@
 packages: []
 
+ignoredOptionalDependencies:
+  - better-sqlite3
+  - "@types/better-sqlite3"
+
 allowBuilds:
   esbuild: true
   lightningcss: true
   unrs-resolver: true
   msw: false
-  better-sqlite3: true

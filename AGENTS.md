@@ -6,7 +6,7 @@ Cal Isthenics is a fresh web app for personalised calisthenics training. The cur
 
 ## Tech stack
 
-- **Runtime/package manager:** Node.js with `pnpm`
+- **Runtime/package manager:** Cloudflare Workers in production; Node.js with `pnpm` for tooling
 - **Framework:** TanStack Start + TanStack Router
 - **UI:** React 19, TypeScript, shadcn/ui-style components built with React Aria Components, lucide-react icons
 - **Styling:** Tailwind CSS v4 via `@tailwindcss/vite`, global styles in `src/styles.css`
@@ -43,26 +43,30 @@ Scripts:
 - `pnpm lint` — run ESLint
 - `pnpm check` — check formatting with Prettier
 
-CI (`.github/workflows/ci.yml`) runs `pnpm test`, `pnpm typecheck`, and `pnpm lint` on every push to `main` and on pull requests.
+CI (`.github/workflows/ci.yml`) checks generated Cloudflare types and D1 migration drift, applies migrations to local D1, and runs tests, typecheck, lint, and the production build on every push to `main` and on pull requests.
 
-## Deployment
+## Database and deployment
 
-Deployment is not defined yet. The project currently builds with:
+The app deploys to Cloudflare Workers through `@cloudflare/vite-plugin` and Wrangler. `wrangler.jsonc` is the deployment source of truth. Cloudflare D1 is bound as `DB`; server-side database code uses Drizzle's D1 driver. Do not introduce Node-native database drivers such as `better-sqlite3`.
+
+Generate and commit SQL migrations with `pnpm db:generate`. Apply them to local D1 with `pnpm db:migrate` and to production with `pnpm db:migrate:remote`. Regenerate `worker-configuration.d.ts` with `pnpm cf-typegen` whenever Wrangler bindings change.
+
+Deploy with:
 
 ```bash
-pnpm build
+pnpm deploy
 ```
-
-Until a target platform is chosen, treat deployment as TBD and avoid adding platform-specific assumptions. Likely future work is to select a TanStack Start-compatible deployment target, document required environment variables, and add any adapter/configuration needed for that target.
 
 ## Useful commands
 
 ```bash
 pnpm dev       # start local dev server on port 3000
 pnpm build     # production build
-pnpm preview   # preview built app
+pnpm preview   # preview built app in the Workers runtime
+pnpm deploy    # build and deploy to Cloudflare Workers
 pnpm test      # run tests
 pnpm lint      # lint
 pnpm typecheck # TypeScript check
 pnpm check     # formatting check
+pnpm db:migrate # apply migrations to local D1
 ```
