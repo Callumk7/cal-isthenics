@@ -39,19 +39,25 @@ function validateName(
 export function parseDifficultyMultiplier(
   value: unknown
 ): { value: number } | { error: LibraryFieldErrors } {
-  const displayValue =
+  const text =
     typeof value === "number"
-      ? value
-      : typeof value === "string" && value.trim() !== ""
-        ? Number(value)
-        : Number.NaN
-  const thousandths = displayValue * 1000
+      ? String(value)
+      : typeof value === "string"
+        ? value.trim()
+        : ""
+  const match = /^(\d+)(?:\.(\d{1,3}))?$/.exec(text)
+  if (!match) {
+    return {
+      error: {
+        difficultyMultiplier:
+          "Enter a positive multiplier with no more than three decimal places.",
+      },
+    }
+  }
+  const fraction = match[2] ? match[2].padEnd(3, "0") : "000"
+  const thousandths = Number(match[1]) * 1000 + Number(fraction)
 
-  if (
-    !Number.isFinite(displayValue) ||
-    displayValue <= 0 ||
-    !Number.isSafeInteger(thousandths)
-  ) {
+  if (!Number.isSafeInteger(thousandths) || thousandths <= 0) {
     return {
       error: {
         difficultyMultiplier:

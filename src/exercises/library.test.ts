@@ -39,6 +39,17 @@ describe("exercise library domain operations", () => {
     expect(parseDifficultyMultiplier("1.2345")).toMatchObject({
       error: expect.anything(),
     })
+    expect(parseDifficultyMultiplier(1.005)).toEqual({ value: 1005 })
+    expect(parseDifficultyMultiplier(1.001)).toEqual({ value: 1001 })
+    expect(parseDifficultyMultiplier(1.015)).toEqual({ value: 1015 })
+    expect(parseDifficultyMultiplier("1.005")).toEqual({ value: 1005 })
+    expect(parseDifficultyMultiplier("0x10")).toMatchObject({
+      error: expect.anything(),
+    })
+    expect(parseDifficultyMultiplier("1e3")).toMatchObject({
+      error: expect.anything(),
+    })
+    expect(parseDifficultyMultiplier(" 1.25 ")).toEqual({ value: 1250 })
   })
 
   it("validates all fields before attempting a variant write", async () => {
