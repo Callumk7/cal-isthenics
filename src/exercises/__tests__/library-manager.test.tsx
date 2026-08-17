@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { ExerciseLibraryManager } from "./library-manager"
+import { ExerciseLibraryManager } from "../library-manager"
 
 const api = vi.hoisted(() => ({
   addExerciseCategory: vi.fn(),
@@ -12,7 +12,7 @@ const api = vi.hoisted(() => ({
   updateExerciseVariant: vi.fn(),
 }))
 
-vi.mock("./server-functions", () => api)
+vi.mock("../server-functions", () => api)
 
 const category = {
   id: "category-1",

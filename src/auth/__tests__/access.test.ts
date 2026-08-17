@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { getLoginHref, getSafeReturnTo } from "./access"
+import { getLoginHref, getSafeReturnTo } from "../access"
 
 describe("authentication redirects", () => {
   it("preserves an application path and query for login", () => {

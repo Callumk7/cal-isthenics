@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { SESSION_COOKIE_NAME, sessionCookieOptions } from "./config"
-import { getAuthState, login, logout } from "./server-functions"
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from "../config"
+import { getAuthState, login, logout } from "../server-functions"
 
 const mocks = vi.hoisted(() => ({
   createSession: vi.fn(),
@@ -36,22 +36,22 @@ vi.mock("@tanstack/react-start/server", () => ({
   getRequestIP: mocks.getRequestIP,
   setCookie: mocks.setCookie,
 }))
-vi.mock("../db/client", () => ({
+vi.mock("../../db/client", () => ({
   db: {
     select: () => ({
       from: () => ({ limit: () => ({ get: mocks.selectGet }) }),
     }),
   },
 }))
-vi.mock("./crypto", () => ({
+vi.mock("../crypto", () => ({
   PASSWORD_HASH_ITERATIONS: 100_000,
   verifyPassword: mocks.verifyPassword,
 }))
-vi.mock("./sessions", () => ({
+vi.mock("../sessions", () => ({
   createSession: mocks.createSession,
   revokeSession: mocks.revokeSession,
 }))
-vi.mock("./current-session", () => ({
+vi.mock("../current-session", () => ({
   getCurrentSession: mocks.getCurrentSession,
   requireCurrentSession: mocks.requireCurrentSession,
 }))

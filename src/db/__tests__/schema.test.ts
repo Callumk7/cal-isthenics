@@ -11,7 +11,7 @@ import {
   workoutSets,
   workoutTemplateExercises,
   workoutTemplates,
-} from "./schema"
+} from "../schema"
 
 const migration = readFileSync(
   new URL("drizzle/0002_quiet_shocker.sql", `file://${process.cwd()}/`),

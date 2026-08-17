@@ -6,7 +6,7 @@ import {
   hashPassword,
   hashSessionToken,
   verifyPassword,
-} from "./crypto"
+} from "../crypto"
 
 describe("authentication credentials", () => {
   it("stores a salted password hash and verifies only the correct password", async () => {

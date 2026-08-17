@@ -11,7 +11,7 @@ import {
   getExerciseVariantReference,
   parseDifficultyMultiplier,
   renameExerciseCategory,
-} from "./library"
+} from "../library"
 
 function insertDatabase() {
   const values = vi.fn().mockResolvedValue(undefined)

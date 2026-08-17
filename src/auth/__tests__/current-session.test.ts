@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { getCurrentSession, requireCurrentSession } from "./current-session"
+import { getCurrentSession, requireCurrentSession } from "../current-session"
 
 const { findActiveSession, getCookie } = vi.hoisted(() => ({
   findActiveSession: vi.fn(),
@@ -8,8 +8,8 @@ const { findActiveSession, getCookie } = vi.hoisted(() => ({
 }))
 
 vi.mock("@tanstack/react-start/server", () => ({ getCookie }))
-vi.mock("./sessions", () => ({ findActiveSession }))
-vi.mock("../db/client", () => ({ db: { name: "test-db" } }))
+vi.mock("../sessions", () => ({ findActiveSession }))
+vi.mock("../../db/client", () => ({ db: { name: "test-db" } }))
 
 describe("current request session", () => {
   beforeEach(() => {

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { Route } from "./__root"
+import { Route } from "../__root"
 
 const { getAuthState } = vi.hoisted(() => ({
   getAuthState: vi.fn(),
