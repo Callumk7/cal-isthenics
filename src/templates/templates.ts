@@ -23,6 +23,14 @@ export type TemplateMutationResult<T> =
       fieldErrors?: TemplateFieldErrors
     }
 
+export type WorkoutTemplateSummary = {
+  id: string
+  name: string
+  updatedAt: Date
+  exerciseCount: number
+  canStart: boolean
+}
+
 export type WorkoutTemplateDetail = typeof workoutTemplates.$inferSelect & {
   exercises: Array<{
     id: string
@@ -83,6 +91,44 @@ export async function listWorkoutTemplates(
   return db.query.workoutTemplates.findMany({
     where: eq(workoutTemplates.userId, userId),
     orderBy: [asc(workoutTemplates.name)],
+  })
+}
+
+export async function listWorkoutTemplateSummaries(
+  db: TemplateDatabase,
+  userId: string
+): Promise<WorkoutTemplateSummary[]> {
+  const templates = await db.query.workoutTemplates.findMany({
+    where: eq(workoutTemplates.userId, userId),
+    orderBy: [asc(workoutTemplates.name)],
+    with: {
+      exercises: {
+        columns: { setCount: true, position: true },
+        with: {
+          variant: {
+            columns: { archivedAt: true },
+            with: { category: { columns: { archivedAt: true } } },
+          },
+        },
+      },
+    },
+  })
+
+  return templates.map((template) => {
+    const exerciseCount = template.exercises.length
+    return {
+      id: template.id,
+      name: template.name,
+      updatedAt: template.updatedAt,
+      exerciseCount,
+      canStart:
+        exerciseCount > 0 &&
+        template.exercises.every(
+          (exercise) =>
+            exercise.variant.archivedAt === null &&
+            exercise.variant.category.archivedAt === null
+        ),
+    }
   })
 }
 

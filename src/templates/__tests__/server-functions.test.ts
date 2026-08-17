@@ -4,6 +4,7 @@ import {
   createWorkoutTemplate,
   deleteWorkoutTemplate,
   listWorkoutTemplates,
+  listWorkoutTemplateSummaries,
   readWorkoutTemplate,
   updateWorkoutTemplate,
 } from "../server-functions"
@@ -11,6 +12,7 @@ import {
 const mocks = vi.hoisted(() => ({
   requireCurrentSession: vi.fn(),
   listWorkoutTemplates: vi.fn(),
+  listWorkoutTemplateSummaries: vi.fn(),
   getWorkoutTemplate: vi.fn(),
   createWorkoutTemplate: vi.fn(),
   updateWorkoutTemplate: vi.fn(),
@@ -40,6 +42,7 @@ describe("authenticated workout template server operations", () => {
     mocks.requireCurrentSession.mockResolvedValue({ userId: "owner" })
 
     await listWorkoutTemplates()
+    await listWorkoutTemplateSummaries()
     await readWorkoutTemplate({ data: { id: "template" } })
     await createWorkoutTemplate({ data: { name: "Push", exercises: [] } })
     await updateWorkoutTemplate({
@@ -48,6 +51,10 @@ describe("authenticated workout template server operations", () => {
     await deleteWorkoutTemplate({ data: { id: "template" } })
 
     expect(mocks.listWorkoutTemplates).toHaveBeenCalledWith(
+      expect.anything(),
+      "owner"
+    )
+    expect(mocks.listWorkoutTemplateSummaries).toHaveBeenCalledWith(
       expect.anything(),
       "owner"
     )
