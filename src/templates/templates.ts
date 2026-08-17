@@ -275,10 +275,14 @@ export async function createWorkoutTemplate(
     createdAt: now,
     updatedAt: now,
   }))
-  await db.batch([
-    db.insert(workoutTemplates).values(template),
-    db.insert(workoutTemplateExercises).values(templateExercises),
-  ])
+  await db.batch(
+    templateExercises.length > 0
+      ? [
+          db.insert(workoutTemplates).values(template),
+          db.insert(workoutTemplateExercises).values(templateExercises),
+        ]
+      : [db.insert(workoutTemplates).values(template)]
+  )
 
   return {
     ok: true,
@@ -335,21 +339,38 @@ export async function updateWorkoutTemplate(
     createdAt: now,
     updatedAt: now,
   }))
-  await db.batch([
-    db
-      .update(workoutTemplates)
-      .set({ name: name.value, updatedAt: now })
-      .where(
-        and(
-          eq(workoutTemplates.id, input.id),
-          eq(workoutTemplates.userId, userId)
-        )
-      ),
-    db
-      .delete(workoutTemplateExercises)
-      .where(eq(workoutTemplateExercises.templateId, input.id)),
-    db.insert(workoutTemplateExercises).values(templateExercises),
-  ])
+  await db.batch(
+    templateExercises.length > 0
+      ? [
+          db
+            .update(workoutTemplates)
+            .set({ name: name.value, updatedAt: now })
+            .where(
+              and(
+                eq(workoutTemplates.id, input.id),
+                eq(workoutTemplates.userId, userId)
+              )
+            ),
+          db
+            .delete(workoutTemplateExercises)
+            .where(eq(workoutTemplateExercises.templateId, input.id)),
+          db.insert(workoutTemplateExercises).values(templateExercises),
+        ]
+      : [
+          db
+            .update(workoutTemplates)
+            .set({ name: name.value, updatedAt: now })
+            .where(
+              and(
+                eq(workoutTemplates.id, input.id),
+                eq(workoutTemplates.userId, userId)
+              )
+            ),
+          db
+            .delete(workoutTemplateExercises)
+            .where(eq(workoutTemplateExercises.templateId, input.id)),
+        ]
+  )
 
   return {
     ok: true,

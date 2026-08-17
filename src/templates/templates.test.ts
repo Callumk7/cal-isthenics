@@ -373,4 +373,61 @@ describe("workout template domain operations", () => {
     })
     expect(remove).toHaveBeenCalledTimes(2)
   })
+
+  it("creates an empty template without an exercise insert statement", async () => {
+    const { db, batch, templateValues, exerciseValues } = templateDatabase()
+
+    await expect(
+      createWorkoutTemplate(db, "owner", { name: "Empty", exercises: [] })
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { name: "Empty", exercises: [], canStart: false },
+    })
+    expect(batch).toHaveBeenCalledOnce()
+    expect(batch.mock.calls[0][0]).toHaveLength(1)
+    expect(templateValues).toHaveBeenCalledTimes(1)
+    expect(exerciseValues).not.toHaveBeenCalled()
+  })
+
+  it("replaces with an empty exercise list without an insert statement", async () => {
+    const update = vi.fn(() => ({ set: vi.fn(() => ({ where: vi.fn() })) }))
+    const remove = vi.fn(() => ({ where: vi.fn() }))
+    const insertValues = vi.fn()
+    const batch = vi.fn().mockResolvedValue([])
+    const db = {
+      batch,
+      update,
+      delete: remove,
+      insert: vi.fn(() => ({ values: insertValues })),
+      query: {
+        workoutTemplates: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "template",
+            userId: "owner",
+            name: "Old",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }),
+        },
+        workoutTemplateExercises: { findMany: vi.fn().mockResolvedValue([]) },
+        exerciseVariants: { findMany: vi.fn().mockResolvedValue([]) },
+      },
+    } as never
+
+    await expect(
+      updateWorkoutTemplate(db, "owner", {
+        id: "template",
+        name: "Empty",
+        exercises: [],
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { name: "Empty", canStart: false },
+    })
+    expect(update).toHaveBeenCalledOnce()
+    expect(remove).toHaveBeenCalledOnce()
+    expect(insertValues).not.toHaveBeenCalled()
+    expect(batch).toHaveBeenCalledOnce()
+    expect(batch.mock.calls[0][0]).toHaveLength(2)
+  })
 })
