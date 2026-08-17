@@ -5,7 +5,7 @@ import {
   listActiveExercises,
   readExerciseVariantReference,
   removeExerciseVariant,
-} from "./server-functions"
+} from "../server-functions"
 
 const mocks = vi.hoisted(() => ({
   requireCurrentSession: vi.fn(),
@@ -25,11 +25,11 @@ vi.mock("@tanstack/react-start", () => ({
     },
   }),
 }))
-vi.mock("../auth/current-session", () => ({
+vi.mock("../../auth/current-session", () => ({
   requireCurrentSession: mocks.requireCurrentSession,
 }))
-vi.mock("../db/client", () => ({ db: {} }))
-vi.mock("./library", () => ({
+vi.mock("../../db/client", () => ({ db: {} }))
+vi.mock("../library", () => ({
   getActiveExerciseLibrary: mocks.getActiveExerciseLibrary,
   getExerciseManagementLibrary: vi.fn(),
   getExerciseVariantReference: mocks.getExerciseVariantReference,

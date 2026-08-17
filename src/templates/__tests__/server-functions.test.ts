@@ -6,7 +6,7 @@ import {
   listWorkoutTemplates,
   readWorkoutTemplate,
   updateWorkoutTemplate,
-} from "./server-functions"
+} from "../server-functions"
 
 const mocks = vi.hoisted(() => ({
   requireCurrentSession: vi.fn(),
@@ -27,11 +27,11 @@ vi.mock("@tanstack/react-start", () => ({
     },
   }),
 }))
-vi.mock("../auth/current-session", () => ({
+vi.mock("../../auth/current-session", () => ({
   requireCurrentSession: mocks.requireCurrentSession,
 }))
-vi.mock("../db/client", () => ({ db: {} }))
-vi.mock("./templates", () => mocks)
+vi.mock("../../db/client", () => ({ db: {} }))
+vi.mock("../templates", () => mocks)
 
 describe("authenticated workout template server operations", () => {
   beforeEach(() => vi.clearAllMocks())

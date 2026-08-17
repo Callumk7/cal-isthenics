@@ -6,7 +6,7 @@ import {
   getWorkoutTemplate,
   parseSetCount,
   updateWorkoutTemplate,
-} from "./templates"
+} from "../templates"
 
 const activeVariant: {
   id: string

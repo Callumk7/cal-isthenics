@@ -1,8 +1,8 @@
 import { getTableColumns, getTableName } from "drizzle-orm"
 import { describe, expect, it, vi } from "vitest"
 
-import { sessions, users } from "../db/schema"
-import { createSession, findActiveSession, revokeSession } from "./sessions"
+import { sessions, users } from "../../db/schema"
+import { createSession, findActiveSession, revokeSession } from "../sessions"
 
 describe("authentication persistence", () => {
   it("defines user and revocable, expiring session records", () => {

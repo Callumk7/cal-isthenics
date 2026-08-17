@@ -33,7 +33,7 @@ As features grow, prefer keeping route-level composition in `src/routes/`, reusa
 
 Vitest + jsdom is configured via `vitest.config.ts` (standalone — does not run the TanStack Start Vite plugin). The setup file is `src/test/setup.ts`, which imports `@testing-library/jest-dom/vitest` matchers and runs `cleanup()` after each test.
 
-Test files are colocated with the code they test and follow the `*.test.ts` / `*.test.tsx` naming convention (e.g. `src/lib/utils.test.ts`). Imports from `vitest` are explicit — globals are off.
+Test files live in a `__tests__` folder next to the code they test and retain the `*.test.ts` / `*.test.tsx` suffix so Vitest's include pattern finds them (e.g. `src/lib/__tests__/utils.test.ts`). Imports from `vitest` are explicit — globals are off.
 
 Scripts:
 
