@@ -1,3 +1,4 @@
+import { and, eq, gte, lte } from "drizzle-orm"
 import { describe, expect, it, vi } from "vitest"
 
 import {
@@ -5,6 +6,7 @@ import {
   listCalisthenicsIntensity,
   trailingTwelveMonthRange,
 } from "../calisthenics-intensity"
+import { workouts } from "../../db/schema"
 
 const exercise = (overrides: Record<string, unknown> = {}) => ({
   categoryName: "Pull snapshot",
@@ -66,7 +68,9 @@ describe("calisthenics intensity", () => {
       },
     ])
     expect(fallback[0].scoreMilli).toBe(12_000)
-    expect(fallback[0].workouts[0].exercises[0].variantName).toBe("Row snapshot")
+    expect(fallback[0].workouts[0].exercises[0].variantName).toBe(
+      "Row snapshot"
+    )
   })
 
   it("scopes and orders the date-range query for the owner", async () => {
@@ -84,13 +88,26 @@ describe("calisthenics intensity", () => {
         },
       },
     })
-    expect(findMany.mock.calls[0][0].where).toBeDefined()
+    expect(findMany.mock.calls[0][0].where).toEqual(
+      and(
+        eq(workouts.userId, "owner"),
+        gte(workouts.workoutDate, "2025-08-18"),
+        lte(workouts.workoutDate, "2026-08-18")
+      )
+    )
   })
 
   it("creates an inclusive trailing 12-month local-date range", () => {
     expect(trailingTwelveMonthRange(new Date(2026, 7, 18))).toEqual({
       from: "2025-08-18",
       to: "2026-08-18",
+    })
+  })
+
+  it("clamps the trailing range to the shorter prior month in leap years", () => {
+    expect(trailingTwelveMonthRange(new Date(2024, 1, 29))).toEqual({
+      from: "2023-02-28",
+      to: "2024-02-29",
     })
   })
 })

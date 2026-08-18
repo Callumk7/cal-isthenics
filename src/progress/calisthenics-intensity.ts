@@ -48,7 +48,8 @@ export function aggregateCalisthenicsIntensity(
   for (const row of rows) {
     const exercises = row.exercises.map((exercise) => {
       const current = exercise.sourceVariant
-      const multiplier = current?.difficultyMultiplier ?? exercise.difficultyMultiplier
+      const multiplier =
+        current?.difficultyMultiplier ?? exercise.difficultyMultiplier
       return {
         categoryName: current?.category.name ?? exercise.categoryName,
         variantName: current?.name ?? exercise.variantName,
@@ -62,7 +63,10 @@ export function aggregateCalisthenicsIntensity(
       id: row.id,
       name: row.name,
       workoutDate: row.workoutDate,
-      scoreMilli: exercises.reduce((total, exercise) => total + exercise.scoreMilli, 0),
+      scoreMilli: exercises.reduce(
+        (total, exercise) => total + exercise.scoreMilli,
+        0
+      ),
       exercises,
     }
     const dateWorkouts = days.get(row.workoutDate) ?? []
@@ -72,7 +76,10 @@ export function aggregateCalisthenicsIntensity(
 
   return [...days.entries()].map(([workoutDate, dateWorkouts]) => ({
     workoutDate,
-    scoreMilli: dateWorkouts.reduce((total, workout) => total + workout.scoreMilli, 0),
+    scoreMilli: dateWorkouts.reduce(
+      (total, workout) => total + workout.scoreMilli,
+      0
+    ),
     workouts: dateWorkouts,
   }))
 }
@@ -107,17 +114,29 @@ export function formatRelativeScore(scoreMilli: number): string {
   )
 }
 
+function formatDate(year: number, monthIndex: number, day: number): string {
+  return [
+    year,
+    String(monthIndex + 1).padStart(2, "0"),
+    String(day).padStart(2, "0"),
+  ].join("-")
+}
+
 export function trailingTwelveMonthRange(today = new Date()) {
-  const to = [
-    today.getFullYear(),
-    String(today.getMonth() + 1).padStart(2, "0"),
-    String(today.getDate()).padStart(2, "0"),
-  ].join("-")
-  const fromDate = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate())
-  const from = [
-    fromDate.getFullYear(),
-    String(fromDate.getMonth() + 1).padStart(2, "0"),
-    String(fromDate.getDate()).padStart(2, "0"),
-  ].join("-")
+  const to = formatDate(today.getFullYear(), today.getMonth(), today.getDate())
+  const fromYear = today.getFullYear() - 1
+  const fromMonthIndex = today.getMonth()
+  // The prior year's month can be shorter than this year's (e.g. Feb 29 rolls
+  // forward into March), so clamp the day to the last valid day of that month.
+  // Date.UTC(year, month + 1, 0) is the calendar date one day before
+  // `month + 1` — the last day of `month` — computed deterministically in UTC.
+  const lastDayOfFromMonth = new Date(
+    Date.UTC(fromYear, fromMonthIndex + 1, 0)
+  ).getUTCDate()
+  const from = formatDate(
+    fromYear,
+    fromMonthIndex,
+    Math.min(today.getDate(), lastDayOfFromMonth)
+  )
   return { from, to }
 }
