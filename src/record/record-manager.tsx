@@ -95,6 +95,16 @@ export function RecordManager({
       setAnnouncement("We couldn’t load saved workouts. Please try again.")
     }
   }
+  async function refreshWorkouts() {
+    try {
+      setWorkouts(
+        await listWorkouts({ data: date ? { from: date, to: date } : {} })
+      )
+    } catch {
+      // The saved workout is still reachable from the success screen; the
+      // discovery list refreshes itself on the next visit or filter change.
+    }
+  }
   if (savedId)
     return (
       <Success
@@ -114,6 +124,7 @@ export function RecordManager({
         onSaved={(id) => {
           setEditor(null)
           setSavedId(id)
+          void refreshWorkouts()
         }}
       />
     )
@@ -234,6 +245,8 @@ export function RecordManager({
                 variant="outline"
                 className="h-auto w-full justify-between p-3"
                 to="/record/$workoutId"
+                // LinkButton's React Aria wrapper erases typed-route params;
+                // cast the shape we know the route expects.
                 params={{ workoutId: workout.id } as never}
               >
                 <span>

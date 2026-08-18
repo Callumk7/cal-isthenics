@@ -7,6 +7,15 @@ import {
   Trash2Icon,
 } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button, LinkButton } from "@/components/ui/button"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
@@ -21,6 +30,7 @@ import type { WorkoutDetail } from "@/workouts/workouts"
 import {
   createWorkout,
   createWorkoutFromTemplate,
+  deleteWorkout,
   updateWorkout,
 } from "@/workouts/server-functions"
 
@@ -134,20 +144,11 @@ export function WorkoutEditor({
     setSaving(true)
     setSaveError("")
     try {
-      const data = {
+      const payload = {
         workoutDate: form.date,
         name: form.name,
         notes: form.notes,
-        exercises: form.rows.map((row) => ({
-          variantId: row.variantId,
-          notes: row.notes,
-          sets: row.sets.map((set) => set.reps),
-        })),
-      }
-      const activeRows = savableRows
-      const payload = {
-        ...data,
-        exercises: activeRows.map((row) => ({
+        exercises: savableRows.map((row) => ({
           variantId: row.variantId,
           notes: row.notes,
           sets: row.sets.map((set) => set.reps),
@@ -490,6 +491,8 @@ export function Success({
             className="h-11"
             variant="outline"
             to="/record/$workoutId"
+            // LinkButton's React Aria wrapper erases typed-route params;
+            // cast the shape we know the route expects.
             params={{ workoutId: id } as never}
           >
             View saved workout
@@ -517,4 +520,70 @@ export function editorFromWorkout(workout: WorkoutDetail): Editor {
       })),
     })),
   }
+}
+
+export function WorkoutDeleteDialog({
+  workoutId,
+  onDeleted,
+}: {
+  workoutId: string
+  onDeleted: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState("")
+  async function remove() {
+    setDeleting(true)
+    setDeleteError("")
+    try {
+      const result = await deleteWorkout({ data: { id: workoutId } })
+      if (result.ok) {
+        onDeleted()
+        return
+      }
+      setDeleteError("We couldn’t delete this workout. Please try again.")
+    } catch {
+      setDeleteError(
+        "We couldn’t delete this workout. Check your connection and try again."
+      )
+    } finally {
+      setDeleting(false)
+    }
+  }
+  return (
+    <>
+      <Button
+        variant="destructive"
+        className="h-11"
+        onPress={() => setOpen(true)}
+      >
+        Delete workout
+      </Button>
+      <AlertDialog isOpen={open} onOpenChange={setOpen}>
+        <AlertDialogContent isDismissable={!deleting}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete workout?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes this workout and its sets.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && (
+            <p role="alert" className="text-sm text-destructive">
+              {deleteError}
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={deleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              isDisabled={deleting}
+              onPress={remove}
+            >
+              {deleting ? "Deleting…" : "Delete workout"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
 }
