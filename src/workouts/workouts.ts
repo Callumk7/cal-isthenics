@@ -247,7 +247,7 @@ export async function createWorkout(
   const validated = await validateInput(db, userId, input)
   if ("error" in validated)
     return { ok: false, error: "validation", fieldErrors: validated.error }
-  const rows = buildRows(userId, validated as never, now)
+  const rows = buildRows(userId, validated, now)
   await db.batch([
     db.insert(workouts).values(rows.workout),
     ...(rows.exercises.length
@@ -352,7 +352,7 @@ export async function updateWorkout(
   const validated = await validateInput(db, userId, input)
   if ("error" in validated)
     return { ok: false, error: "validation", fieldErrors: validated.error }
-  const rows = buildRows(userId, validated as never, now, input.id)
+  const rows = buildRows(userId, validated, now, input.id)
   rows.workout.createdAt = existing.createdAt
   await db.batch([
     db
