@@ -155,9 +155,10 @@ describe("RecordManager", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
     await waitFor(() =>
-      expect(screen.getByText("workout-123")).toBeInTheDocument()
+      expect(
+        screen.getByRole("link", { name: /view saved workout/i })
+      ).toBeInTheDocument()
     )
-    expect(screen.getByRole("link", { name: /history/i })).toBeInTheDocument()
   })
 
   it("reorders exercise rows with the move controls", () => {

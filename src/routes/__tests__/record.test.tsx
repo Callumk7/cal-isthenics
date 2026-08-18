@@ -7,6 +7,7 @@ import { Route } from "../record"
 const mocks = vi.hoisted(() => ({
   listWorkoutTemplateSummaries: vi.fn(),
   listActiveExercises: vi.fn(),
+  listWorkouts: vi.fn(),
 }))
 
 vi.mock("@/templates/server-functions", () => ({
@@ -15,11 +16,15 @@ vi.mock("@/templates/server-functions", () => ({
 vi.mock("@/exercises/server-functions", () => ({
   listActiveExercises: mocks.listActiveExercises,
 }))
+vi.mock("@/workouts/server-functions", () => ({
+  listWorkouts: mocks.listWorkouts,
+}))
 
 describe("record route", () => {
   it("loads templates and the active library together", async () => {
     mocks.listWorkoutTemplateSummaries.mockResolvedValue([{ id: "template" }])
     mocks.listActiveExercises.mockResolvedValue([{ id: "category" }])
+    mocks.listWorkouts.mockResolvedValue([])
 
     const loader = Route.options.loader as (
       context: unknown
@@ -27,9 +32,11 @@ describe("record route", () => {
     await expect(loader({})).resolves.toEqual({
       templates: [{ id: "template" }],
       library: [{ id: "category" }],
+      workouts: [],
     })
     expect(mocks.listWorkoutTemplateSummaries).toHaveBeenCalledOnce()
     expect(mocks.listActiveExercises).toHaveBeenCalledOnce()
+    expect(mocks.listWorkouts).toHaveBeenCalledOnce()
   })
 
   it("renders loading and load-error feedback", () => {
