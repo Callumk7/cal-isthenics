@@ -143,6 +143,7 @@ export const workouts = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     /** Calendar-only ISO date. Intentionally not unique per user. */
     workoutDate: text("workout_date").notNull(),
+    name: text("name"),
     notes: text("notes"),
     ...timestamps,
   },
@@ -171,6 +172,7 @@ export const workoutExercises = sqliteTable(
     categoryName: text("category_name").notNull(),
     variantName: text("variant_name").notNull(),
     difficultyMultiplier: integer("difficulty_multiplier").notNull(),
+    notes: text("notes"),
     ...timestamps,
   },
   (table) => [
