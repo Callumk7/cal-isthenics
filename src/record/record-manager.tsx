@@ -1,62 +1,34 @@
-import { useEffect, useEffectEvent, useState } from "react"
-import type { FormEvent } from "react"
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  DumbbellIcon,
-  PlusIcon,
-  Trash2Icon,
-} from "lucide-react"
+import { useState } from "react"
+import { DumbbellIcon, PlusIcon } from "lucide-react"
 
-import { Button, LinkButton } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
+import { Button, LinkButton } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  NativeSelect,
-  NativeSelectOptGroup,
-  NativeSelectOption,
-} from "@/components/ui/native-select"
-import { Textarea } from "@/components/ui/textarea"
 import type { ActiveCategory } from "@/templates/template-manager"
 import type {
   WorkoutTemplateDetail,
   WorkoutTemplateSummary,
 } from "@/templates/templates"
 import { readWorkoutTemplate } from "@/templates/server-functions"
-import {
-  createWorkout,
-  createWorkoutFromTemplate,
-} from "@/workouts/server-functions"
+import { listWorkouts } from "@/workouts/server-functions"
+import { Success, WorkoutEditor } from "./workout-editor"
+import type { Editor } from "./workout-editor"
 
-const repsError = "Enter a positive whole number of reps."
 const key = () => crypto.randomUUID()
-const today = () => {
-  const now = new Date()
-  const offset = now.getTimezoneOffset() * 60_000
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10)
-}
+const today = () =>
+  new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 10)
 
-type SetRow = { key: string; reps: string }
-type ExerciseRow = {
-  key: string
-  variantId: string
-  variantName: string
-  categoryName: string
-  notes: string
-  sets: SetRow[]
+type SavedWorkout = {
+  id: string
+  workoutDate: string
+  name: string | null
+  exercises: unknown[]
 }
-type Editor = {
-  templateId?: string
-  date: string
-  name: string
-  notes: string
-  rows: ExerciseRow[]
-}
+type TemplateExercise = WorkoutTemplateDetail["exercises"][number]
 
-function rowFromTemplate(
-  exercise: WorkoutTemplateDetail["exercises"][number]
-): ExerciseRow {
+function rowFromTemplate(exercise: TemplateExercise) {
   return {
     key: key(),
     variantId: exercise.variantId,
@@ -73,35 +45,26 @@ function rowFromTemplate(
 export function RecordManager({
   initialTemplates,
   initialLibrary,
+  initialWorkouts = [],
 }: {
   initialTemplates: WorkoutTemplateSummary[]
   initialLibrary: ActiveCategory[]
+  initialWorkouts?: SavedWorkout[]
 }) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [loadingTemplate, setLoadingTemplate] = useState<string | null>(null)
   const [announcement, setAnnouncement] = useState("")
   const [savedId, setSavedId] = useState<string | null>(null)
+  const [date, setDate] = useState("")
+  const [workouts, setWorkouts] = useState(initialWorkouts)
   const hasLibrary = initialLibrary.some(
     (category) =>
       category.archivedAt === null &&
       category.variants.some((variant) => variant.archivedAt === null)
   )
-
-  function discard() {
-    setEditor(null)
-  }
-  function confirmDiscard() {
-    if (editor && !window.confirm("Discard your unsaved workout changes?"))
-      return false
-    setEditor(null)
-    return true
-  }
-  function blank() {
-    if (!confirmDiscard()) return
+  const blank = () =>
     setEditor({ date: today(), name: "", notes: "", rows: [] })
-  }
   async function startTemplate(template: WorkoutTemplateSummary) {
-    if (!confirmDiscard()) return
     setLoadingTemplate(template.id)
     try {
       const detail = await readWorkoutTemplate({ data: { id: template.id } })
@@ -122,8 +85,31 @@ export function RecordManager({
       setLoadingTemplate(null)
     }
   }
-
-  if (savedId) {
+  async function filterWorkouts(value: string) {
+    setDate(value)
+    try {
+      // A date filter must show every workout on that day, not just the
+      // default recent-list limit of 20.
+      setWorkouts(
+        await listWorkouts({
+          data: value ? { from: value, to: value, limit: 100 } : {},
+        })
+      )
+    } catch {
+      setAnnouncement("We couldn’t load saved workouts. Please try again.")
+    }
+  }
+  async function refreshWorkouts() {
+    try {
+      setWorkouts(
+        await listWorkouts({ data: date ? { from: date, to: date } : {} })
+      )
+    } catch {
+      // The saved workout is still reachable from the success screen; the
+      // discovery list refreshes itself on the next visit or filter change.
+    }
+  }
+  if (savedId)
     return (
       <Success
         id={savedId}
@@ -133,20 +119,19 @@ export function RecordManager({
         }}
       />
     )
-  }
-  if (editor) {
+  if (editor)
     return (
       <WorkoutEditor
         editor={editor}
         library={initialLibrary}
-        onDiscard={discard}
+        onDiscard={() => setEditor(null)}
         onSaved={(id) => {
           setEditor(null)
           setSavedId(id)
+          void refreshWorkouts()
         }}
       />
     )
-  }
   return (
     <main className="mx-auto w-full max-w-3xl p-4 md:p-8">
       <header className="mb-6">
@@ -165,10 +150,7 @@ export function RecordManager({
       </p>
       {!hasLibrary ? (
         <div className="border border-dashed p-8 text-center">
-          <DumbbellIcon
-            className="mx-auto mb-3 size-7 text-muted-foreground"
-            aria-hidden="true"
-          />
+          <DumbbellIcon className="mx-auto mb-3 size-7 text-muted-foreground" />
           <h2 className="font-medium">Build your exercise library first</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Add an active exercise before recording a workout.
@@ -235,432 +217,57 @@ export function RecordManager({
           </section>
         </>
       )}
-    </main>
-  )
-}
-
-function WorkoutEditor({
-  editor,
-  library,
-  onDiscard,
-  onSaved,
-}: {
-  editor: Editor
-  library: ActiveCategory[]
-  onDiscard: () => void
-  onSaved: (id: string) => void
-}) {
-  const [form, setForm] = useState(editor)
-  const [selected, setSelected] = useState("")
-  const [setErrors, setSetErrors] = useState<Record<string, string>>({})
-  const [saveError, setSaveError] = useState("")
-  const [saving, setSaving] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const variants = library.flatMap((category) =>
-    category.archivedAt === null
-      ? category.variants
-          .filter((variant) => variant.archivedAt === null)
-          .map((variant) => ({ ...variant, categoryName: category.name }))
-      : []
-  )
-
-  const onBeforeUnload = useEffectEvent((event: BeforeUnloadEvent) => {
-    if (dirty) {
-      event.preventDefault()
-      event.returnValue = ""
-    }
-  })
-
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => onBeforeUnload(event)
-    window.addEventListener("beforeunload", warn)
-    return () => window.removeEventListener("beforeunload", warn)
-  }, [])
-  const changed = (next: Editor) => {
-    setDirty(true)
-    setForm(next)
-  }
-  function addExercise() {
-    const variant = variants.find((item) => item.id === selected)
-    if (!variant) return
-    changed({
-      ...form,
-      rows: [
-        ...form.rows,
-        {
-          key: key(),
-          variantId: variant.id,
-          variantName: variant.name,
-          categoryName: variant.categoryName,
-          notes: "",
-          sets: [{ key: key(), reps: "" }],
-        },
-      ],
-    })
-    setSelected("")
-  }
-  function move(index: number, direction: number) {
-    const rows = [...form.rows]
-    const target = index + direction
-    ;[rows[index], rows[target]] = [rows[target], rows[index]]
-    changed({ ...form, rows })
-  }
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const errors: Record<string, string> = {}
-    form.rows.forEach((row) =>
-      row.sets.forEach((set) => {
-        if (
-          !/^\d+$/.test(set.reps.trim()) ||
-          !Number.isSafeInteger(Number(set.reps)) ||
-          Number(set.reps) < 1
-        )
-          errors[set.key] = repsError
-      })
-    )
-    setSetErrors(errors)
-    if (!form.rows.length || form.rows.some((row) => !row.sets.length)) {
-      setSaveError("Add at least one set for every exercise.")
-      return
-    }
-    if (Object.keys(errors).length) return
-    setSaving(true)
-    setSaveError("")
-    try {
-      const data = {
-        workoutDate: form.date,
-        name: form.name,
-        notes: form.notes,
-        exercises: form.rows.map((row) => ({
-          variantId: row.variantId,
-          notes: row.notes,
-          sets: row.sets.map((set) => set.reps),
-        })),
-      }
-      const result = form.templateId
-        ? await createWorkoutFromTemplate({
-            data: { ...data, templateId: form.templateId },
-          })
-        : await createWorkout({ data })
-      if (!result.ok) {
-        const fieldErrors = result.fieldErrors?.exercises
-        if (Array.isArray(fieldErrors)) {
-          const serverErrors: Record<string, string> = {}
-          fieldErrors.forEach((item, index) => {
-            if (
-              item &&
-              typeof item === "object" &&
-              "sets" in item &&
-              form.rows[index]
-            )
-              form.rows[index].sets.forEach((set) => {
-                serverErrors[set.key] =
-                  typeof item.sets === "string" ? item.sets : repsError
-              })
-          })
-          setSetErrors(serverErrors)
-        }
-        setSaveError(
-          result.message ?? "We couldn’t save your workout. Please try again."
-        )
-        return
-      }
-      setDirty(false)
-      onSaved(result.value.id)
-    } catch {
-      setSaveError(
-        "We couldn’t save your workout. Check your connection and try again."
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-  return (
-    <main className="mx-auto w-full max-w-3xl p-4 md:p-8">
-      <header className="mb-6 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Record a workout
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Enter the sets you completed.
-          </p>
-        </div>
-        <Button
-          variant="ghost"
-          onPress={() => {
-            if (
-              dirty &&
-              !window.confirm("Discard your unsaved workout changes?")
-            )
-              return
-            onDiscard()
-          }}
-          isDisabled={saving}
-        >
-          Discard
-        </Button>
-      </header>
-      <form onSubmit={submit} noValidate className="space-y-5">
-        {saveError && (
-          <p
-            role="alert"
-            className="border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-          >
-            {saveError}
-          </p>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
-            <FieldLabel htmlFor="workout-date">Date</FieldLabel>
+      <section className="mt-8" aria-labelledby="saved-workouts-heading">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 id="saved-workouts-heading" className="font-medium">
+              Saved workouts
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Find a recent workout or choose a date.
+            </p>
+          </div>
+          <label className="text-sm">
+            Date{" "}
             <Input
-              id="workout-date"
+              className="mt-1 h-11"
               type="date"
-              className="h-11 text-base md:text-sm"
-              value={form.date}
-              onChange={(e) => changed({ ...form, date: e.target.value })}
+              value={date}
+              onChange={(event) => filterWorkouts(event.target.value)}
             />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="workout-name">
-              Workout name (optional)
-            </FieldLabel>
-            <Input
-              id="workout-name"
-              className="h-11 text-base md:text-sm"
-              value={form.name}
-              onChange={(e) => changed({ ...form, name: e.target.value })}
-            />
-          </Field>
-        </div>
-        <Field>
-          <FieldLabel htmlFor="workout-notes">
-            General notes (optional)
-          </FieldLabel>
-          <Textarea
-            id="workout-notes"
-            value={form.notes}
-            onChange={(e) => changed({ ...form, notes: e.target.value })}
-          />
-        </Field>
-        <div className="space-y-3">
-          {form.rows.map((row, index) => (
-            <section key={row.key} className="border p-3">
-              <div className="flex items-start gap-1">
-                <div className="flex shrink-0 flex-col">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-lg"
-                    aria-label={`Move "${row.variantName}" up`}
-                    isDisabled={saving || index === 0}
-                    onPress={() => move(index, -1)}
-                  >
-                    <ChevronUpIcon />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-lg"
-                    aria-label={`Move "${row.variantName}" down`}
-                    isDisabled={saving || index === form.rows.length - 1}
-                    onPress={() => move(index, 1)}
-                  >
-                    <ChevronDownIcon />
-                  </Button>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-medium break-words">{row.variantName}</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {row.categoryName}
-                  </p>
-                  <Field className="mt-3">
-                    <FieldLabel htmlFor={`notes-${row.key}`}>
-                      Exercise notes (optional)
-                    </FieldLabel>
-                    <Textarea
-                      id={`notes-${row.key}`}
-                      value={row.notes}
-                      onChange={(e) =>
-                        changed({
-                          ...form,
-                          rows: form.rows.map((item) =>
-                            item.key === row.key
-                              ? { ...item, notes: e.target.value }
-                              : item
-                          ),
-                        })
-                      }
-                    />
-                  </Field>
-                  <div className="mt-3 space-y-2">
-                    {row.sets.map((set, setIndex) => (
-                      <Field
-                        key={set.key}
-                        data-invalid={Boolean(setErrors[set.key])}
-                      >
-                        <FieldLabel htmlFor={`reps-${set.key}`}>
-                          Set {setIndex + 1} reps
-                        </FieldLabel>
-                        <div className="flex gap-2">
-                          <Input
-                            id={`reps-${set.key}`}
-                            className="h-11 text-base md:text-sm"
-                            type="text"
-                            inputMode="numeric"
-                            value={set.reps}
-                            aria-invalid={Boolean(setErrors[set.key])}
-                            onChange={(e) => {
-                              changed({
-                                ...form,
-                                rows: form.rows.map((item) =>
-                                  item.key === row.key
-                                    ? {
-                                        ...item,
-                                        sets: item.sets.map((s) =>
-                                          s.key === set.key
-                                            ? { ...s, reps: e.target.value }
-                                            : s
-                                        ),
-                                      }
-                                    : item
-                                ),
-                              })
-                              setSetErrors((current) => ({
-                                ...current,
-                                [set.key]: "",
-                              }))
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-lg"
-                            aria-label={`Remove set ${setIndex + 1} from ${row.variantName}`}
-                            onPress={() =>
-                              changed({
-                                ...form,
-                                rows: form.rows.map((item) =>
-                                  item.key === row.key
-                                    ? {
-                                        ...item,
-                                        sets: item.sets.filter(
-                                          (s) => s.key !== set.key
-                                        ),
-                                      }
-                                    : item
-                                ),
-                              })
-                            }
-                          >
-                            <Trash2Icon />
-                          </Button>
-                        </div>
-                        <FieldError>{setErrors[set.key]}</FieldError>
-                      </Field>
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-3 h-11"
-                    onPress={() =>
-                      changed({
-                        ...form,
-                        rows: form.rows.map((item) =>
-                          item.key === row.key
-                            ? {
-                                ...item,
-                                sets: [...item.sets, { key: key(), reps: "" }],
-                              }
-                            : item
-                        ),
-                      })
-                    }
-                  >
-                    <PlusIcon /> Add set
-                  </Button>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-lg"
-                  aria-label={`Remove ${row.variantName}`}
-                  onPress={() =>
-                    changed({
-                      ...form,
-                      rows: form.rows.filter((item) => item.key !== row.key),
-                    })
-                  }
-                >
-                  <Trash2Icon />
-                </Button>
-              </div>
-            </section>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <label className="sr-only" htmlFor="exercise-picker">
-            Exercise
           </label>
-          <NativeSelect
-            id="exercise-picker"
-            className="h-11 flex-1"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
-          >
-            <NativeSelectOption value="">Select an exercise</NativeSelectOption>
-            {library
-              .filter((category) => category.archivedAt === null)
-              .map((category) => (
-                <NativeSelectOptGroup key={category.id} label={category.name}>
-                  {category.variants
-                    .filter((variant) => variant.archivedAt === null)
-                    .map((variant) => (
-                      <NativeSelectOption key={variant.id} value={variant.id}>
-                        {variant.name}
-                      </NativeSelectOption>
-                    ))}
-                </NativeSelectOptGroup>
-              ))}
-          </NativeSelect>
-          <Button
-            type="button"
-            className="h-11"
-            isDisabled={!selected || saving}
-            onPress={addExercise}
-          >
-            <PlusIcon /> Add exercise
-          </Button>
         </div>
-        <Button type="submit" className="h-11" isDisabled={saving}>
-          {saving ? "Saving…" : "Save workout"}
-        </Button>
-      </form>
-    </main>
-  )
-}
-
-function Success({ id, onAnother }: { id: string; onAnother: () => void }) {
-  return (
-    <main className="mx-auto w-full max-w-3xl p-4 md:p-8">
-      <div className="border p-6">
-        <h1 className="text-2xl font-semibold">Workout saved</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your workout ID is <code>{id}</code>.
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          It will appear in History once workout viewing arrives.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Button className="h-11" onPress={onAnother}>
-            Record another workout
-          </Button>
-          <LinkButton className="h-11" variant="outline" to="/history">
-            Go to History
-          </LinkButton>
+        <div className="mt-3 space-y-2">
+          {workouts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No saved workouts found.
+            </p>
+          ) : (
+            workouts.map((workout) => (
+              <LinkButton
+                key={workout.id}
+                variant="outline"
+                className="h-auto w-full justify-between p-3"
+                to="/record/$workoutId"
+                // LinkButton's React Aria wrapper erases typed-route params;
+                // cast the shape we know the route expects.
+                params={{ workoutId: workout.id } as never}
+              >
+                <span>
+                  <span className="block font-medium">
+                    {workout.name || "Workout"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {workout.workoutDate} · {workout.exercises.length}{" "}
+                    {workout.exercises.length === 1 ? "exercise" : "exercises"}
+                  </span>
+                </span>
+                <span className="text-xs text-muted-foreground">View</span>
+              </LinkButton>
+            ))
+          )}
         </div>
-      </div>
+      </section>
     </main>
   )
 }

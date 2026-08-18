@@ -16,6 +16,8 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as RecordRouteImport } from './routes/record'
 import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as RecordIndexRouteImport } from './routes/record.index'
+import { Route as RecordWorkoutIdRouteImport } from './routes/record.$workoutId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +54,16 @@ const TemplatesRoute = TemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecordIndexRoute = RecordIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RecordRoute,
+} as any)
+const RecordWorkoutIdRoute = RecordWorkoutIdRouteImport.update({
+  id: '/$workoutId',
+  path: '/$workoutId',
+  getParentRoute: () => RecordRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,8 +71,10 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
-  '/record': typeof RecordRoute
+  '/record': typeof RecordRouteWithChildren
   '/templates': typeof TemplatesRoute
+  '/record/$workoutId': typeof RecordWorkoutIdRoute
+  '/record/': typeof RecordIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +82,9 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
-  '/record': typeof RecordRoute
   '/templates': typeof TemplatesRoute
+  '/record/$workoutId': typeof RecordWorkoutIdRoute
+  '/record': typeof RecordIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +93,10 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
   '/progress': typeof ProgressRoute
-  '/record': typeof RecordRoute
+  '/record': typeof RecordRouteWithChildren
   '/templates': typeof TemplatesRoute
+  '/record/$workoutId': typeof RecordWorkoutIdRoute
+  '/record/': typeof RecordIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +108,8 @@ export interface FileRouteTypes {
     | '/progress'
     | '/record'
     | '/templates'
+    | '/record/$workoutId'
+    | '/record/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,8 +117,9 @@ export interface FileRouteTypes {
     | '/history'
     | '/login'
     | '/progress'
-    | '/record'
     | '/templates'
+    | '/record/$workoutId'
+    | '/record'
   id:
     | '__root__'
     | '/'
@@ -109,6 +129,8 @@ export interface FileRouteTypes {
     | '/progress'
     | '/record'
     | '/templates'
+    | '/record/$workoutId'
+    | '/record/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,7 +139,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
   ProgressRoute: typeof ProgressRoute
-  RecordRoute: typeof RecordRoute
+  RecordRoute: typeof RecordRouteWithChildren
   TemplatesRoute: typeof TemplatesRoute
 }
 
@@ -172,8 +194,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/record/': {
+      id: '/record/'
+      path: '/'
+      fullPath: '/record/'
+      preLoaderRoute: typeof RecordIndexRouteImport
+      parentRoute: typeof RecordRoute
+    }
+    '/record/$workoutId': {
+      id: '/record/$workoutId'
+      path: '/$workoutId'
+      fullPath: '/record/$workoutId'
+      preLoaderRoute: typeof RecordWorkoutIdRouteImport
+      parentRoute: typeof RecordRoute
+    }
   }
 }
+
+interface RecordRouteChildren {
+  RecordWorkoutIdRoute: typeof RecordWorkoutIdRoute
+  RecordIndexRoute: typeof RecordIndexRoute
+}
+
+const RecordRouteChildren: RecordRouteChildren = {
+  RecordWorkoutIdRoute: RecordWorkoutIdRoute,
+  RecordIndexRoute: RecordIndexRoute,
+}
+
+const RecordRouteWithChildren =
+  RecordRoute._addFileChildren(RecordRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -181,7 +230,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
   ProgressRoute: ProgressRoute,
-  RecordRoute: RecordRoute,
+  RecordRoute: RecordRouteWithChildren,
   TemplatesRoute: TemplatesRoute,
 }
 export const routeTree = rootRouteImport

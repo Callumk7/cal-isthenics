@@ -7,19 +7,22 @@ const templates = vi.hoisted(() => ({ readWorkoutTemplate: vi.fn() }))
 const workouts = vi.hoisted(() => ({
   createWorkout: vi.fn(),
   createWorkoutFromTemplate: vi.fn(),
+  listWorkouts: vi.fn(),
 }))
 vi.mock("@/templates/server-functions", () => templates)
 vi.mock("@/workouts/server-functions", () => workouts)
 vi.mock("@/components/ui/router-link", () => ({
   RouterLink: ({
     to,
+    params,
     children,
     ...props
   }: {
     to: string
+    params?: Record<string, string>
     children: React.ReactNode
   }) => (
-    <a href={to} {...props}>
+    <a href={to.replace("$workoutId", params?.workoutId ?? "")} {...props}>
       {children}
     </a>
   ),
@@ -155,9 +158,10 @@ describe("RecordManager", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
     await waitFor(() =>
-      expect(screen.getByText("workout-123")).toBeInTheDocument()
+      expect(
+        screen.getByRole("link", { name: /view saved workout/i })
+      ).toBeInTheDocument()
     )
-    expect(screen.getByRole("link", { name: /history/i })).toBeInTheDocument()
   })
 
   it("reorders exercise rows with the move controls", () => {
@@ -315,5 +319,130 @@ describe("RecordManager", () => {
     ).toBeInTheDocument()
     fireEvent.click(button)
     expect(templates.readWorkoutTemplate).not.toHaveBeenCalled()
+  })
+
+  describe("saved-workout discovery", () => {
+    const savedWorkouts = [
+      {
+        id: "w1",
+        workoutDate: "2026-08-18",
+        name: "Push day",
+        exercises: [{ id: "e1" }, { id: "e2" }],
+      },
+      {
+        id: "w2",
+        workoutDate: "2026-08-18",
+        name: null,
+        exercises: [{ id: "e3" }],
+      },
+      {
+        id: "w3",
+        workoutDate: "2026-08-10",
+        name: "Leg day",
+        exercises: [{ id: "e4" }],
+      },
+    ]
+
+    it("lists recent saved workouts and links each to its detail route", () => {
+      render(
+        <RecordManager
+          initialTemplates={[]}
+          initialLibrary={library}
+          initialWorkouts={savedWorkouts}
+        />
+      )
+      const links = screen.getAllByRole("link")
+      expect(screen.getByRole("link", { name: /push day/i })).toHaveAttribute(
+        "href",
+        "/record/w1"
+      )
+      // An unnamed workout falls back to "Workout" and still links through.
+      expect(screen.getByRole("link", { name: /workout/i })).toHaveAttribute(
+        "href",
+        "/record/w2"
+      )
+      expect(links).toHaveLength(3)
+      expect(screen.getByText("2026-08-18 · 2 exercises")).toBeInTheDocument()
+      expect(screen.getByText("2026-08-10 · 1 exercise")).toBeInTheDocument()
+    })
+
+    it("filters by a calendar date and shows multiple workouts from that date", async () => {
+      workouts.listWorkouts.mockResolvedValue([
+        savedWorkouts[0],
+        savedWorkouts[1],
+      ])
+      render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+      fireEvent.change(screen.getByLabelText("Date"), {
+        target: { value: "2026-08-18" },
+      })
+      await waitFor(() =>
+        expect(workouts.listWorkouts).toHaveBeenCalledWith({
+          data: { from: "2026-08-18", to: "2026-08-18", limit: 100 },
+        })
+      )
+      await waitFor(() =>
+        expect(
+          screen.getByRole("link", { name: /push day/i })
+        ).toBeInTheDocument()
+      )
+      expect(screen.getAllByRole("link").length).toBe(2)
+      // Clearing the date returns to the recent list.
+      workouts.listWorkouts.mockResolvedValue(savedWorkouts)
+      fireEvent.change(screen.getByLabelText("Date"), {
+        target: { value: "" },
+      })
+      await waitFor(() =>
+        expect(workouts.listWorkouts).toHaveBeenCalledWith({ data: {} })
+      )
+      await waitFor(() =>
+        expect(
+          screen.getByRole("link", { name: /leg day/i })
+        ).toBeInTheDocument()
+      )
+    })
+
+    it("shows a recoverable error and keeps the previous list when filtering fails", async () => {
+      render(
+        <RecordManager
+          initialTemplates={[]}
+          initialLibrary={library}
+          initialWorkouts={[savedWorkouts[2]]}
+        />
+      )
+      workouts.listWorkouts.mockRejectedValue(new Error("network"))
+      fireEvent.change(screen.getByLabelText("Date"), {
+        target: { value: "2026-08-18" },
+      })
+      await waitFor(() =>
+        expect(screen.getByRole("status")).toHaveTextContent(
+          "couldn’t load saved workouts"
+        )
+      )
+      expect(screen.getByRole("link", { name: /leg day/i })).toBeInTheDocument()
+    })
+
+    it("refreshes the saved-workout list after a workout is saved", async () => {
+      workouts.createWorkout.mockResolvedValue({
+        ok: true,
+        value: { id: "w-new" },
+      })
+      workouts.listWorkouts.mockResolvedValue([])
+      render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+      fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
+      fireEvent.change(screen.getByLabelText("Exercise"), {
+        target: { value: "push-up" },
+      })
+      fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
+      fireEvent.change(screen.getByLabelText(/set 1 reps/i), {
+        target: { value: "8" },
+      })
+      fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
+      await waitFor(() =>
+        expect(
+          screen.getByRole("link", { name: /view saved workout/i })
+        ).toBeInTheDocument()
+      )
+      expect(workouts.listWorkouts).toHaveBeenCalledWith({ data: {} })
+    })
   })
 })

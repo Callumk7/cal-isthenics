@@ -1,31 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router"
-
-import { listActiveExercises } from "@/exercises/server-functions"
-import { RecordManager } from "@/record/record-manager"
-import { listWorkoutTemplateSummaries } from "@/templates/server-functions"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/record")({
-  loader: async () => {
-    const [templates, library] = await Promise.all([
-      listWorkoutTemplateSummaries(),
-      listActiveExercises(),
-    ])
-    return { templates, library }
-  },
-  pendingComponent: () => (
-    <div className="mx-auto max-w-3xl p-4 md:p-8" role="status">
-      Loading workout recorder…
-    </div>
-  ),
-  errorComponent: () => (
-    <div className="mx-auto max-w-3xl p-4 md:p-8" role="alert">
-      We couldn't load the workout recorder. Refresh the page to try again.
-    </div>
-  ),
-  component: RecordPage,
+  // Layout route: /record renders the discovery page (record.index) and
+  // /record/$workoutId renders the detail/edit page (record.$workoutId).
+  // The layout itself loads nothing, so the nested edit route can never be
+  // blocked by a failure in the discovery view's loader.
+  component: () => <Outlet />,
 })
-
-function RecordPage() {
-  const { templates, library } = Route.useLoaderData()
-  return <RecordManager initialTemplates={templates} initialLibrary={library} />
-}
