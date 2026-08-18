@@ -230,6 +230,14 @@ export function RunRecorder() {
             >
               Record another run
             </Button>
+            <LinkButton
+              className="h-11"
+              variant="outline"
+              to="/record/run/$runId"
+              params={{ runId: saved.id } as never}
+            >
+              Edit this run
+            </LinkButton>
             <LinkButton className="h-11" variant="outline" to="/record">
               Back to Record
             </LinkButton>

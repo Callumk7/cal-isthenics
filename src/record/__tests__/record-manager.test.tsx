@@ -22,7 +22,12 @@ vi.mock("@/components/ui/router-link", () => ({
     params?: Record<string, string>
     children: React.ReactNode
   }) => (
-    <a href={to.replace("$workoutId", params?.workoutId ?? "")} {...props}>
+    <a
+      href={to
+        .replace("$workoutId", params?.workoutId ?? "")
+        .replace("$runId", params?.runId ?? "")}
+      {...props}
+    >
       {children}
     </a>
   ),
@@ -332,6 +337,45 @@ describe("RecordManager", () => {
     ).toBeInTheDocument()
     fireEvent.click(button)
     expect(templates.readWorkoutTemplate).not.toHaveBeenCalled()
+  })
+
+  describe("saved-run discovery", () => {
+    const savedRuns = [
+      {
+        id: "run-1",
+        userId: "user",
+        workoutDate: "2026-08-18",
+        distanceMetres: 5000,
+        durationSeconds: 1830,
+        calories: 300,
+        manualSpeedMilliKmH: null,
+        calculatedAverageSpeedKmH: 9.84,
+        effectiveAverageSpeedKmH: 9.84,
+        runningIntensity: 49.18,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]
+
+    it("lists saved runs with links to their edit routes", () => {
+      render(
+        <RecordManager
+          initialTemplates={[]}
+          initialLibrary={library}
+          initialRuns={savedRuns}
+        />
+      )
+      expect(screen.getByRole("link", { name: /2026-08-18/i })).toHaveAttribute(
+        "href",
+        "/record/run/run-1"
+      )
+      expect(screen.getByText("5.00 km · 31 min")).toBeInTheDocument()
+    })
+
+    it("shows an empty saved-runs state", () => {
+      render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+      expect(screen.getByText("No saved runs yet.")).toBeInTheDocument()
+    })
   })
 
   describe("saved-workout discovery", () => {

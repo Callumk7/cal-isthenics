@@ -29,6 +29,7 @@ const api = vi.hoisted(() => ({
   createWorkoutFromTemplate: vi.fn(),
   updateWorkout: vi.fn(),
   deleteWorkout: vi.fn(),
+  listRunningWorkouts: vi.fn(),
 }))
 
 vi.mock("@/auth/server-functions", () => ({
@@ -59,6 +60,9 @@ vi.mock("@/workouts/server-functions", () => ({
   createWorkoutFromTemplate: api.createWorkoutFromTemplate,
   updateWorkout: api.updateWorkout,
   deleteWorkout: api.deleteWorkout,
+}))
+vi.mock("@/running/server-functions", () => ({
+  listRunningWorkouts: api.listRunningWorkouts,
 }))
 
 const now = new Date("2030-01-01T00:00:00Z")
@@ -138,6 +142,7 @@ beforeEach(() => {
   api.listActiveExercises.mockResolvedValue([category])
   api.listWorkoutTemplateSummaries.mockResolvedValue([template])
   api.listWorkouts.mockResolvedValue([workout])
+  api.listRunningWorkouts.mockResolvedValue({ ok: true, value: [] })
   api.readWorkout.mockResolvedValue(workout)
 })
 

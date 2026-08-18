@@ -3,9 +3,12 @@ import { describe, expect, it, vi } from "vitest"
 import {
   calculateRunningMetrics,
   createRunningWorkout,
+  deleteRunningWorkout,
   parseDistanceKm,
   parseManualSpeedKmH,
+  updateRunningWorkout,
 } from "../running-workouts"
+import { createInMemoryDrizzle } from "../../test/in-memory-drizzle"
 
 describe("running workout values", () => {
   it("converts distance and speed to lossless integer thousandths", () => {
@@ -83,5 +86,87 @@ describe("running workout values", () => {
       },
     })
     expect(values).toHaveBeenCalledOnce()
+  })
+
+  it("updates owned fields and retains or explicitly clears an override", async () => {
+    const db = createInMemoryDrizzle()
+    const createdAt = new Date("2030-01-01T00:00:00Z")
+    db.seed("runningWorkouts", [
+      {
+        id: "run",
+        userId: "owner",
+        workoutDate: "2030-01-01",
+        distanceMetres: 5000,
+        durationSeconds: 1800,
+        calories: 400,
+        manualSpeedMilliKmH: 12500,
+        createdAt,
+        updatedAt: createdAt,
+      },
+    ])
+
+    const retained = await updateRunningWorkout(db, "owner", {
+      id: "run",
+      workoutDate: "2030-02-02",
+      distanceKm: "10",
+      durationSeconds: 3600,
+      calories: 700,
+    })
+    expect(retained).toMatchObject({
+      ok: true,
+      value: {
+        id: "run",
+        createdAt,
+        manualSpeedMilliKmH: 12500,
+        calculatedAverageSpeedKmH: 10,
+        effectiveAverageSpeedKmH: 12.5,
+        runningIntensity: 100,
+      },
+    })
+
+    const cleared = await updateRunningWorkout(db, "owner", {
+      id: "run",
+      workoutDate: "2030-02-02",
+      distanceKm: "10",
+      durationSeconds: 3600,
+      calories: 700,
+      manualSpeedKmH: "",
+    })
+    expect(cleared).toMatchObject({
+      ok: true,
+      value: { manualSpeedMilliKmH: null, effectiveAverageSpeedKmH: 10 },
+    })
+  })
+
+  it("does not update or delete foreign runs", async () => {
+    const db = createInMemoryDrizzle()
+    const createdAt = new Date("2030-01-01T00:00:00Z")
+    db.seed("runningWorkouts", [
+      {
+        id: "foreign",
+        userId: "someone-else",
+        workoutDate: "2030-01-01",
+        distanceMetres: 5000,
+        durationSeconds: 1800,
+        calories: 400,
+        manualSpeedMilliKmH: null,
+        createdAt,
+        updatedAt: createdAt,
+      },
+    ])
+    expect(
+      await updateRunningWorkout(db, "owner", {
+        id: "foreign",
+        workoutDate: "2030-02-02",
+        distanceKm: "10",
+        durationSeconds: 3600,
+        calories: 700,
+      })
+    ).toEqual({ ok: false, error: "not_found" })
+    expect(await deleteRunningWorkout(db, "owner", "foreign")).toEqual({
+      ok: false,
+      error: "not_found",
+    })
+    expect(db._tables.runningWorkouts.rows).toHaveLength(1)
   })
 })

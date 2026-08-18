@@ -8,8 +8,16 @@ describe("IntensityTrend", () => {
     render(
       <IntensityTrend
         days={[
-          { workoutDate: "2026-08-01", scoreMilli: 12_500, workouts: [{ id: "1" } as never] },
-          { workoutDate: "2026-08-02", scoreMilli: 20_000, workouts: [{ id: "2" } as never, { id: "3" } as never] },
+          {
+            workoutDate: "2026-08-01",
+            scoreMilli: 12_500,
+            workouts: [{ id: "1" } as never],
+          },
+          {
+            workoutDate: "2026-08-02",
+            scoreMilli: 20_000,
+            workouts: [{ id: "2" } as never, { id: "3" } as never],
+          },
         ]}
       />
     )

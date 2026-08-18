@@ -189,7 +189,24 @@ export async function updateRunningWorkout(
   input: RunningWorkoutInput & { id: string },
   now = new Date()
 ): Promise<RunningResult<RunningWorkout>> {
-  const parsed = validateInput(input)
+  // An omitted override means "leave it alone" for updates. This is distinct
+  // from an explicitly empty/null value, which clears the override.
+  const existing = await db.query.runningWorkouts.findFirst({
+    where: and(
+      eq(runningWorkouts.id, input.id),
+      eq(runningWorkouts.userId, userId)
+    ),
+  })
+  if (!existing) return { ok: false, error: "not_found" }
+  const parsed = validateInput({
+    ...input,
+    manualSpeedKmH:
+      input.manualSpeedKmH === undefined
+        ? existing.manualSpeedMilliKmH === null
+          ? null
+          : existing.manualSpeedMilliKmH / 1000
+        : input.manualSpeedKmH,
+  })
   if ("error" in parsed)
     return { ok: false, error: "validation", fieldErrors: parsed.error }
   const updated = await db

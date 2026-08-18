@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   listWorkoutTemplateSummaries: vi.fn(),
   listActiveExercises: vi.fn(),
   listWorkouts: vi.fn(),
+  listRunningWorkouts: vi.fn(),
 }))
 
 vi.mock("@/templates/server-functions", () => ({
@@ -19,12 +20,16 @@ vi.mock("@/exercises/server-functions", () => ({
 vi.mock("@/workouts/server-functions", () => ({
   listWorkouts: mocks.listWorkouts,
 }))
+vi.mock("@/running/server-functions", () => ({
+  listRunningWorkouts: mocks.listRunningWorkouts,
+}))
 
 describe("record index route", () => {
   it("loads templates, the active library, and recent workouts together", async () => {
     mocks.listWorkoutTemplateSummaries.mockResolvedValue([{ id: "template" }])
     mocks.listActiveExercises.mockResolvedValue([{ id: "category" }])
     mocks.listWorkouts.mockResolvedValue([])
+    mocks.listRunningWorkouts.mockResolvedValue({ ok: true, value: [] })
 
     const loader = Route.options.loader as (
       context: unknown
@@ -33,10 +38,12 @@ describe("record index route", () => {
       templates: [{ id: "template" }],
       library: [{ id: "category" }],
       workouts: [],
+      runs: [],
     })
     expect(mocks.listWorkoutTemplateSummaries).toHaveBeenCalledOnce()
     expect(mocks.listActiveExercises).toHaveBeenCalledOnce()
     expect(mocks.listWorkouts).toHaveBeenCalledOnce()
+    expect(mocks.listRunningWorkouts).toHaveBeenCalledOnce()
   })
 
   it("renders loading and load-error feedback", () => {

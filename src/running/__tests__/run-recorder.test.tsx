@@ -20,13 +20,15 @@ vi.mock("@/running/server-functions", () => ({
 vi.mock("@/components/ui/router-link", () => ({
   RouterLink: ({
     to,
+    params,
     children,
     ...props
   }: {
     to: string
+    params?: Record<string, string>
     children: React.ReactNode
   }) => (
-    <a href={to} {...props}>
+    <a href={to.replace("$runId", params?.runId ?? "")} {...props}>
       {children}
     </a>
   ),
@@ -83,6 +85,19 @@ describe("RunRecorder", () => {
       .toISOString()
       .slice(0, 10)
     expect(screen.getByLabelText("Date")).toHaveValue(expected)
+  })
+
+  it("links to edit the saved run", async () => {
+    mocks.createRunningWorkout.mockResolvedValue({
+      ok: true,
+      value: run("run-1"),
+    })
+    const user = await fillValid()
+    await user.click(screen.getByRole("button", { name: /save run/i }))
+    await expectSavedRunId("run-1")
+    expect(
+      screen.getByRole("link", { name: /edit this run/i })
+    ).toHaveAttribute("href", "/record/run/run-1")
   })
 
   it("normalizes hours, minutes, and seconds into exact total seconds", async () => {
