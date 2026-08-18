@@ -105,6 +105,19 @@ beforeEach(() => {
 })
 
 describe("RecordManager", () => {
+  it("keeps the run entry visible without an exercise library", () => {
+    render(<RecordManager initialTemplates={[]} initialLibrary={[]} />)
+    expect(screen.getByRole("link", { name: /record a run/i })).toHaveAttribute(
+      "href",
+      "/record/run"
+    )
+    expect(
+      screen.getByRole("heading", {
+        name: /build your exercise library first/i,
+      })
+    ).toBeInTheDocument()
+  })
+
   it("starts blank, supports repeated exercises and validates reps", () => {
     render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
     fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
@@ -351,7 +364,9 @@ describe("RecordManager", () => {
           initialWorkouts={savedWorkouts}
         />
       )
-      const links = screen.getAllByRole("link")
+      const links = screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href")?.startsWith("/record/w"))
       expect(screen.getByRole("link", { name: /push day/i })).toHaveAttribute(
         "href",
         "/record/w1"
@@ -385,7 +400,12 @@ describe("RecordManager", () => {
           screen.getByRole("link", { name: /push day/i })
         ).toBeInTheDocument()
       )
-      expect(screen.getAllByRole("link").length).toBe(2)
+      expect(
+        screen
+          .getAllByRole("link")
+          .filter((link) => link.getAttribute("href")?.startsWith("/record/w"))
+          .length
+      ).toBe(2)
       // Clearing the date returns to the recent list.
       workouts.listWorkouts.mockResolvedValue(savedWorkouts)
       fireEvent.change(screen.getByLabelText("Date"), {
