@@ -18,25 +18,28 @@ type QueryOptions = {
 type StoredTable = { rows: Row[] }
 type Statement = PromiseLike<unknown> & { execute: () => Promise<unknown> }
 
-const tables = {
-  users: { table: schema.users, rows: [] as Row[] },
-  sessions: { table: schema.sessions, rows: [] as Row[] },
-  exerciseCategories: { table: schema.exerciseCategories, rows: [] as Row[] },
-  exerciseVariants: { table: schema.exerciseVariants, rows: [] as Row[] },
-  workoutTemplates: { table: schema.workoutTemplates, rows: [] as Row[] },
-  workoutTemplateExercises: {
-    table: schema.workoutTemplateExercises,
-    rows: [] as Row[],
-  },
-  workouts: { table: schema.workouts, rows: [] as Row[] },
-  workoutExercises: { table: schema.workoutExercises, rows: [] as Row[] },
-  workoutSets: { table: schema.workoutSets, rows: [] as Row[] },
+const tableDefinitions = {
+  users: schema.users,
+  sessions: schema.sessions,
+  exerciseCategories: schema.exerciseCategories,
+  exerciseVariants: schema.exerciseVariants,
+  workoutTemplates: schema.workoutTemplates,
+  workoutTemplateExercises: schema.workoutTemplateExercises,
+  workouts: schema.workouts,
+  workoutExercises: schema.workoutExercises,
+  workoutSets: schema.workoutSets,
 }
 
-type TableName = keyof typeof tables
+type TableName = keyof typeof tableDefinitions
+type Tables = {
+  [Name in TableName]: { table: (typeof tableDefinitions)[Name]; rows: Row[] }
+}
 
-const byTable = new Map<Table, (typeof tables)[TableName]>(
-  Object.values(tables).map((entry) => [entry.table, entry])
+const byTable = new Map<Table, TableName>(
+  Object.entries(tableDefinitions).map(([name, table]) => [
+    table,
+    name as TableName,
+  ])
 )
 
 function chunks(value: unknown): unknown[] {
@@ -54,10 +57,10 @@ function text(value: unknown): string {
 }
 
 function columnKey(column: Column): string {
-  const entry = byTable.get(column.table)
-  if (!entry)
+  const tableName = byTable.get(column.table)
+  if (!tableName)
     throw new Error("The in-memory D1 fake received an unknown table.")
-  const key = Object.entries(entry.table).find(
+  const key = Object.entries(tableDefinitions[tableName]).find(
     ([, value]) => value === column
   )?.[0]
   if (!key) throw new Error(`Unknown column: ${column.name}`)
@@ -162,49 +165,6 @@ const relations: Partial<
   },
 }
 
-function select(
-  name: TableName,
-  options: QueryOptions = {},
-  sourceRows = tables[name].rows
-): Row[] {
-  let rows = sourceRows.filter((row) => matches(row, options.where))
-  if (options.orderBy) {
-    rows = [...rows].sort((left, right) => {
-      for (const order of options.orderBy ?? []) {
-        const column = chunks(order).find(
-          (chunk): chunk is Column => chunk instanceof Column
-        )
-        if (!column) continue
-        const result = compare(
-          left[columnKey(column)],
-          right[columnKey(column)]
-        )
-        if (result) return text(order).includes("desc") ? -result : result
-      }
-      return 0
-    })
-  }
-  if (options.limit !== undefined) rows = rows.slice(0, options.limit)
-  return rows.map((source) => {
-    const row = project(source, options.columns)
-    for (const [relationName, relationOptions] of Object.entries(
-      options.with ?? {}
-    )) {
-      const relation = relations[name]?.[relationName]
-      if (!relation)
-        throw new Error(`Unsupported relation: ${name}.${relationName}`)
-      const nestedOptions = relationOptions === true ? {} : relationOptions
-      const candidates = tables[relation.target].rows.filter(
-        (candidate) => candidate[relation.foreign] === source[relation.local]
-      )
-      const joined = select(relation.target, nestedOptions, candidates)
-      const isOne = relationName === "category" || relationName === "variant"
-      row[relationName] = isOne ? joined[0] : joined
-    }
-    return row
-  })
-}
-
 function statement(run: () => unknown | Promise<unknown>): Statement {
   const execute = async () => run()
   return {
@@ -213,31 +173,81 @@ function statement(run: () => unknown | Promise<unknown>): Statement {
   }
 }
 
-function cascadeDelete(name: TableName, deleted: Row[]) {
-  if (name === "workouts") {
-    const ids = new Set(deleted.map((row) => row.id))
-    const children = tables.workoutExercises.rows.filter((row) =>
-      ids.has(row.workoutId)
-    )
-    tables.workoutExercises.rows = tables.workoutExercises.rows.filter(
-      (row) => !ids.has(row.workoutId)
-    )
-    cascadeDelete("workoutExercises", children)
-  } else if (name === "workoutExercises") {
-    const ids = new Set(deleted.map((row) => row.id))
-    tables.workoutSets.rows = tables.workoutSets.rows.filter(
-      (row) => !ids.has(row.workoutExerciseId)
-    )
-  } else if (name === "workoutTemplates") {
-    const ids = new Set(deleted.map((row) => row.id))
-    tables.workoutTemplateExercises.rows =
-      tables.workoutTemplateExercises.rows.filter(
-        (row) => !ids.has(row.templateId)
-      )
-  }
-}
-
 export function createInMemoryD1() {
+  const tables = Object.fromEntries(
+    Object.entries(tableDefinitions).map(([name, table]) => [
+      name,
+      { table, rows: [] },
+    ])
+  ) as unknown as Tables
+
+  function select(
+    name: TableName,
+    options: QueryOptions = {},
+    sourceRows = tables[name].rows
+  ): Row[] {
+    let rows = sourceRows.filter((row) => matches(row, options.where))
+    if (options.orderBy) {
+      rows = [...rows].sort((left, right) => {
+        for (const order of options.orderBy ?? []) {
+          const column = chunks(order).find(
+            (chunk): chunk is Column => chunk instanceof Column
+          )
+          if (!column) continue
+          const result = compare(
+            left[columnKey(column)],
+            right[columnKey(column)]
+          )
+          if (result) return text(order).includes("desc") ? -result : result
+        }
+        return 0
+      })
+    }
+    if (options.limit !== undefined) rows = rows.slice(0, options.limit)
+    return rows.map((source) => {
+      const row = project(source, options.columns)
+      for (const [relationName, relationOptions] of Object.entries(
+        options.with ?? {}
+      )) {
+        const relation = relations[name]?.[relationName]
+        if (!relation)
+          throw new Error(`Unsupported relation: ${name}.${relationName}`)
+        const nestedOptions = relationOptions === true ? {} : relationOptions
+        const candidates = tables[relation.target].rows.filter(
+          (candidate) => candidate[relation.foreign] === source[relation.local]
+        )
+        const joined = select(relation.target, nestedOptions, candidates)
+        const isOne = relationName === "category" || relationName === "variant"
+        row[relationName] = isOne ? joined[0] : joined
+      }
+      return row
+    })
+  }
+
+  function cascadeDelete(name: TableName, deleted: Row[]) {
+    if (name === "workouts") {
+      const ids = new Set(deleted.map((row) => row.id))
+      const children = tables.workoutExercises.rows.filter((row) =>
+        ids.has(row.workoutId)
+      )
+      tables.workoutExercises.rows = tables.workoutExercises.rows.filter(
+        (row) => !ids.has(row.workoutId)
+      )
+      cascadeDelete("workoutExercises", children)
+    } else if (name === "workoutExercises") {
+      const ids = new Set(deleted.map((row) => row.id))
+      tables.workoutSets.rows = tables.workoutSets.rows.filter(
+        (row) => !ids.has(row.workoutExerciseId)
+      )
+    } else if (name === "workoutTemplates") {
+      const ids = new Set(deleted.map((row) => row.id))
+      tables.workoutTemplateExercises.rows =
+        tables.workoutTemplateExercises.rows.filter(
+          (row) => !ids.has(row.templateId)
+        )
+    }
+  }
+
   function nameOf(table: Table): TableName {
     const found = Object.entries(tables).find(
       ([, entry]) => entry.table === table
