@@ -377,7 +377,7 @@ describe("RecordManager", () => {
       })
       await waitFor(() =>
         expect(workouts.listWorkouts).toHaveBeenCalledWith({
-          data: { from: "2026-08-18", to: "2026-08-18" },
+          data: { from: "2026-08-18", to: "2026-08-18", limit: 100 },
         })
       )
       await waitFor(() =>

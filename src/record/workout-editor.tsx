@@ -164,18 +164,19 @@ export function WorkoutEditor({
       if (!result.ok) {
         const fieldErrors = result.fieldErrors?.exercises
         if (Array.isArray(fieldErrors)) {
+          // fieldErrors indexes the submitted (savableRows) payload; map them
+          // back onto those same rows so null-source exclusions can't shift
+          // errors onto the wrong exercise.
           const serverErrors: Record<string, string> = {}
-          fieldErrors.forEach((item, index) => {
-            if (
-              item &&
-              typeof item === "object" &&
-              "sets" in item &&
-              form.rows[index]
-            )
-              form.rows[index].sets.forEach((set) => {
-                serverErrors[set.key] =
-                  typeof item.sets === "string" ? item.sets : repsError
+          savableRows.forEach((row, index) => {
+            const item = fieldErrors[index]
+            if (item && typeof item === "object" && "sets" in item) {
+              const message =
+                typeof item.sets === "string" ? item.sets : repsError
+              row.sets.forEach((set) => {
+                serverErrors[set.key] = message
               })
+            }
           })
           setSetErrors(serverErrors)
         }

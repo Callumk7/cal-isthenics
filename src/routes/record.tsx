@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router"
 
 import { listActiveExercises } from "@/exercises/server-functions"
 import { RecordManager } from "@/record/record-manager"
@@ -29,6 +29,12 @@ export const Route = createFileRoute("/record")({
 
 function RecordPage() {
   const { templates, library, workouts } = Route.useLoaderData()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  // /record/$workoutId is a child of this route; render its UI instead of the
+  // discovery/record page so saved-workout links open the edit screen.
+  if (pathname !== "/record") return <Outlet />
   return (
     <RecordManager
       initialTemplates={templates}

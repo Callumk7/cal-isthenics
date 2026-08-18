@@ -88,8 +88,12 @@ export function RecordManager({
   async function filterWorkouts(value: string) {
     setDate(value)
     try {
+      // A date filter must show every workout on that day, not just the
+      // default recent-list limit of 20.
       setWorkouts(
-        await listWorkouts({ data: value ? { from: value, to: value } : {} })
+        await listWorkouts({
+          data: value ? { from: value, to: value, limit: 100 } : {},
+        })
       )
     } catch {
       setAnnouncement("We couldn’t load saved workouts. Please try again.")
