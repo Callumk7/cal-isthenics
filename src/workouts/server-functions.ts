@@ -8,10 +8,9 @@ import {
   deleteWorkout as deleteWorkoutOp,
   getWorkout,
   listWorkouts as listWorkoutsOp,
-  updateWorkout as updateWorkoutOp
-  
+  updateWorkout as updateWorkoutOp,
 } from "./workouts"
-import type {WorkoutInput} from "./workouts";
+import type { WorkoutInput } from "./workouts"
 
 async function userId() {
   return (await requireCurrentSession()).userId
