@@ -14,7 +14,7 @@ There is no public signup. The owner account is provisioned operationally with `
 - **Styling:** Tailwind CSS v4 via `@tailwindcss/vite`, global styles in `src/styles.css`
 - **Database:** Cloudflare D1 with Drizzle ORM
 - **Build tooling:** Vite
-- **Quality:** ESLint, Prettier, TypeScript, Vitest, Testing Library, jsdom
+- **Quality:** oxlint, oxfmt, TypeScript, Vitest, Testing Library, jsdom
 
 ## Application structure
 
@@ -62,8 +62,8 @@ Scripts:
 - `pnpm test` — run all tests once (used in CI)
 - `pnpm test:watch` — run Vitest in watch mode
 - `pnpm typecheck` — run TypeScript without emitting files
-- `pnpm lint` — run ESLint
-- `pnpm check` — check formatting with Prettier
+- `pnpm lint` — run oxlint
+- `pnpm check` — check formatting with oxfmt
 
 CI (`.github/workflows/ci.yml`) checks generated Cloudflare types and D1 migration drift, applies migrations to local D1, and runs tests, typecheck, lint, and the production build on every push to `main` and on pull requests.
 
@@ -90,7 +90,7 @@ pnpm deploy             # build, apply remote migrations, and deploy
 pnpm deploy:cloudflare  # apply remote migrations and run Wrangler deploy
 pnpm test               # run tests once
 pnpm test:watch         # run tests in watch mode
-pnpm lint               # run ESLint
+pnpm lint               # run oxlint
 pnpm typecheck          # run TypeScript checks
 pnpm check              # check formatting
 pnpm format             # format source files
