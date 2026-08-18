@@ -11,13 +11,9 @@ import {
   FieldSet,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { isValidCalendarDate, localCalendarToday } from "@/lib/date"
 import { createRunningWorkout } from "@/running/server-functions"
 import type { RunningWorkout } from "@/running/running-workouts"
-
-const today = () =>
-  new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 10)
 
 const decimalPattern = /^\d+(?:\.\d{1,3})?$/
 const wholeNumberPattern = /^\d+$/
@@ -44,7 +40,7 @@ type FormState = {
 }
 
 const initialForm = (): FormState => ({
-  workoutDate: today(),
+  workoutDate: localCalendarToday(),
   distanceKm: "",
   hours: "",
   minutes: "",
@@ -83,8 +79,8 @@ function validate(state: FormState) {
   const manualSpeed = state.manualSpeedKmH.trim()
   const durationSeconds = parseDuration(state)
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(state.workoutDate)) {
-    errors.workoutDate = "Enter a valid date."
+  if (!isValidCalendarDate(state.workoutDate)) {
+    errors.workoutDate = "Enter a valid calendar date."
   }
   if (!decimalPattern.test(distance) || Number(distance) <= 0) {
     errors.distanceKm =

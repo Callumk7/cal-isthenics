@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from "@testing-library/react"
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -55,6 +61,15 @@ async function fillValid(user = userEvent.setup(), shouldRender = true) {
   return user
 }
 
+/** Asserts the persisted run ID is rendered inside the saved-result region. */
+async function expectSavedRunId(id: string) {
+  const region = await screen.findByRole("region", {
+    name: /running workout saved/i,
+  })
+  const runIdLine = within(region).getByText(/^Run ID:/)
+  expect(runIdLine).toHaveTextContent(id)
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
 })
@@ -89,7 +104,7 @@ describe("RunRecorder", () => {
         manualSpeedKmH: undefined,
       },
     })
-    expect((await screen.findAllByText("run-1")).length).toBeGreaterThan(0)
+    await expectSavedRunId("run-1")
   })
 
   it("previews calculated speed and uses a placeholder when incomplete", async () => {
@@ -160,6 +175,28 @@ describe("RunRecorder", () => {
     )
   })
 
+  it("rejects a non-existent calendar date inline before any server call", async () => {
+    const user = userEvent.setup()
+    render(<RunRecorder />)
+    await user.clear(screen.getByLabelText("Date"))
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "2026-02-30" },
+    })
+    await user.type(screen.getByLabelText("Distance (km)"), "10")
+    await user.type(screen.getByLabelText("Hours"), "1")
+    await user.type(screen.getByLabelText("Minutes"), "0")
+    await user.type(screen.getByLabelText("Seconds"), "0")
+    await user.type(screen.getByLabelText("Calories"), "400")
+    await user.click(screen.getByRole("button", { name: /save run/i }))
+    expect(mocks.createRunningWorkout).not.toHaveBeenCalled()
+    expect(screen.getByLabelText("Date")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    )
+    expect(screen.getByText(/enter a valid calendar date/i)).toBeInTheDocument()
+    expect(screen.getByLabelText("Distance (km)")).toHaveValue("10")
+  })
+
   it("deduplicates pending submissions", async () => {
     let resolve!: (value: unknown) => void
     mocks.createRunningWorkout.mockReturnValue(
@@ -172,7 +209,7 @@ describe("RunRecorder", () => {
     await Promise.all([user.click(button), user.click(button)])
     expect(mocks.createRunningWorkout).toHaveBeenCalledOnce()
     resolve({ ok: true, value: run("run-once") })
-    expect((await screen.findAllByText("run-once")).length).toBeGreaterThan(0)
+    await expectSavedRunId("run-once")
   })
 
   it("allows same-date submissions to surface distinct persisted ids", async () => {
@@ -181,13 +218,13 @@ describe("RunRecorder", () => {
       .mockResolvedValueOnce({ ok: true, value: run("run-b") })
     const user = await fillValid()
     await user.click(screen.getByRole("button", { name: /save run/i }))
-    expect((await screen.findAllByText("run-a")).length).toBeGreaterThan(0)
+    await expectSavedRunId("run-a")
     await user.click(
       screen.getByRole("button", { name: /record another run/i })
     )
     await fillValid(user, false)
     await user.click(screen.getByRole("button", { name: /save run/i }))
-    expect((await screen.findAllByText("run-b")).length).toBeGreaterThan(0)
+    await expectSavedRunId("run-b")
     expect(mocks.createRunningWorkout).toHaveBeenCalledTimes(2)
     expect(mocks.createRunningWorkout.mock.calls[0][0].data.workoutDate).toBe(
       mocks.createRunningWorkout.mock.calls[1][0].data.workoutDate
@@ -206,7 +243,7 @@ describe("RunRecorder", () => {
       screen.queryByRole("heading", { name: /running workout saved/i })
     ).toBeNull()
     await user.click(screen.getByRole("button", { name: /save run/i }))
-    expect((await screen.findAllByText("retry-run")).length).toBeGreaterThan(0)
+    await expectSavedRunId("retry-run")
   })
 
   it("maps server validation errors to fields", async () => {
@@ -257,9 +294,7 @@ describe("RunRecorder", () => {
     await user.type(screen.getByLabelText("Minutes"), "30")
     await user.type(screen.getByLabelText("Seconds"), "0")
     await user.type(screen.getByLabelText("Calories"), "300{enter}")
-    expect((await screen.findAllByText("keyboard-run")).length).toBeGreaterThan(
-      0
-    )
+    await expectSavedRunId("keyboard-run")
     expect(container.firstElementChild?.scrollWidth ?? 0).toBeLessThanOrEqual(
       320
     )

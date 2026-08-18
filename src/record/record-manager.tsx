@@ -4,6 +4,7 @@ import { DumbbellIcon, FootprintsIcon, PlusIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button, LinkButton } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { localCalendarToday } from "@/lib/date"
 import type { ActiveCategory } from "@/templates/template-manager"
 import type {
   WorkoutTemplateDetail,
@@ -15,10 +16,6 @@ import { Success, WorkoutEditor } from "./workout-editor"
 import type { Editor } from "./workout-editor"
 
 const key = () => crypto.randomUUID()
-const today = () =>
-  new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 10)
 
 type SavedWorkout = {
   id: string
@@ -63,7 +60,7 @@ export function RecordManager({
       category.variants.some((variant) => variant.archivedAt === null)
   )
   const blank = () =>
-    setEditor({ date: today(), name: "", notes: "", rows: [] })
+    setEditor({ date: localCalendarToday(), name: "", notes: "", rows: [] })
   async function startTemplate(template: WorkoutTemplateSummary) {
     setLoadingTemplate(template.id)
     try {
@@ -74,7 +71,7 @@ export function RecordManager({
       }
       setEditor({
         templateId: detail.id,
-        date: today(),
+        date: localCalendarToday(),
         name: detail.name,
         notes: "",
         rows: detail.exercises.map(rowFromTemplate),
