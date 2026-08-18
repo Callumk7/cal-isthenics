@@ -117,6 +117,7 @@ export function RunEditor({
   const savingRef = useRef(false)
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const deletingRef = useRef(false)
   const [deleteError, setDeleteError] = useState("")
   const totalSeconds = duration(form)
   const calculated =
@@ -177,6 +178,8 @@ export function RunEditor({
   }
 
   async function remove() {
+    if (deletingRef.current) return
+    deletingRef.current = true
     setDeleting(true)
     setDeleteError("")
     try {
@@ -188,6 +191,7 @@ export function RunEditor({
         "We couldn’t delete this run. Check your connection and try again."
       )
     } finally {
+      deletingRef.current = false
       setDeleting(false)
     }
   }

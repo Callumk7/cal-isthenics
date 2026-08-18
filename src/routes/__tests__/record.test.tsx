@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   deleteWorkout: vi.fn(),
   getAuthState: vi.fn(),
   createRunningWorkout: vi.fn(),
+  listRunningWorkouts: vi.fn(),
 }))
 
 vi.mock("@/templates/server-functions", () => ({
@@ -42,6 +43,7 @@ vi.mock("@/auth/server-functions", () => ({
 }))
 vi.mock("@/running/server-functions", () => ({
   createRunningWorkout: mocks.createRunningWorkout,
+  listRunningWorkouts: mocks.listRunningWorkouts,
 }))
 
 const workout = {
@@ -93,6 +95,7 @@ function mockAuthAndDiscovery() {
   mocks.listActiveExercises.mockResolvedValue([])
   mocks.listWorkoutTemplateSummaries.mockResolvedValue([])
   mocks.listWorkouts.mockResolvedValue([])
+  mocks.listRunningWorkouts.mockResolvedValue({ ok: true, value: [] })
 }
 
 describe("record layout route", () => {

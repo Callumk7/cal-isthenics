@@ -10,6 +10,7 @@ import type {
   WorkoutTemplateDetail,
   WorkoutTemplateSummary,
 } from "@/templates/templates"
+import type { RunningWorkout } from "@/running/running-workouts"
 import { readWorkoutTemplate } from "@/templates/server-functions"
 import { listWorkouts } from "@/workouts/server-functions"
 import { Success, WorkoutEditor } from "./workout-editor"
@@ -43,10 +44,12 @@ export function RecordManager({
   initialTemplates,
   initialLibrary,
   initialWorkouts = [],
+  initialRuns = [],
 }: {
   initialTemplates: WorkoutTemplateSummary[]
   initialLibrary: ActiveCategory[]
   initialWorkouts?: SavedWorkout[]
+  initialRuns?: RunningWorkout[]
 }) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [loadingTemplate, setLoadingTemplate] = useState<string | null>(null)
@@ -280,6 +283,40 @@ export function RecordManager({
                   </span>
                 </span>
                 <span className="text-xs text-muted-foreground">View</span>
+              </LinkButton>
+            ))
+          )}
+        </div>
+      </section>
+      <section className="mt-8" aria-labelledby="saved-runs-heading">
+        <h2 id="saved-runs-heading" className="font-medium">
+          Saved runs
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Review or update a saved running workout.
+        </p>
+        <div className="mt-3 space-y-2">
+          {initialRuns.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No saved runs yet.</p>
+          ) : (
+            initialRuns.map((run) => (
+              <LinkButton
+                key={run.id}
+                variant="outline"
+                className="h-auto w-full justify-between p-3"
+                to="/record/run/$runId"
+                params={{ runId: run.id } as never}
+              >
+                <span className="min-w-0 break-words">
+                  <span className="block min-w-0 font-medium break-words">
+                    {run.workoutDate}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {(run.distanceMetres / 1000).toFixed(2)} km ·{" "}
+                    {Math.round(run.durationSeconds / 60)} min
+                  </span>
+                </span>
+                <span className="text-xs text-muted-foreground">Edit</span>
               </LinkButton>
             ))
           )}
