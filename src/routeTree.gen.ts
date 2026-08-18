@@ -19,6 +19,8 @@ import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as RecordIndexRouteImport } from './routes/record.index'
 import { Route as RecordWorkoutIdRouteImport } from './routes/record.$workoutId'
 import { Route as RecordRunRouteImport } from './routes/record.run'
+import { Route as RecordRunIndexRouteImport } from './routes/record.run.index'
+import { Route as RecordRunRunIdRouteImport } from './routes/record.run.$runId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +72,16 @@ const RecordRunRoute = RecordRunRouteImport.update({
   path: '/run',
   getParentRoute: () => RecordRoute,
 } as any)
+const RecordRunIndexRoute = RecordRunIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RecordRunRoute,
+} as any)
+const RecordRunRunIdRoute = RecordRunRunIdRouteImport.update({
+  id: '/$runId',
+  path: '/$runId',
+  getParentRoute: () => RecordRunRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,8 +92,10 @@ export interface FileRoutesByFullPath {
   '/record': typeof RecordRouteWithChildren
   '/templates': typeof TemplatesRoute
   '/record/$workoutId': typeof RecordWorkoutIdRoute
-  '/record/run': typeof RecordRunRoute
+  '/record/run': typeof RecordRunRouteWithChildren
   '/record/': typeof RecordIndexRoute
+  '/record/run/$runId': typeof RecordRunRunIdRoute
+  '/record/run/': typeof RecordRunIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,8 +105,9 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/templates': typeof TemplatesRoute
   '/record/$workoutId': typeof RecordWorkoutIdRoute
-  '/record/run': typeof RecordRunRoute
   '/record': typeof RecordIndexRoute
+  '/record/run/$runId': typeof RecordRunRunIdRoute
+  '/record/run': typeof RecordRunIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,8 +119,10 @@ export interface FileRoutesById {
   '/record': typeof RecordRouteWithChildren
   '/templates': typeof TemplatesRoute
   '/record/$workoutId': typeof RecordWorkoutIdRoute
-  '/record/run': typeof RecordRunRoute
+  '/record/run': typeof RecordRunRouteWithChildren
   '/record/': typeof RecordIndexRoute
+  '/record/run/$runId': typeof RecordRunRunIdRoute
+  '/record/run/': typeof RecordRunIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,6 +137,8 @@ export interface FileRouteTypes {
     | '/record/$workoutId'
     | '/record/run'
     | '/record/'
+    | '/record/run/$runId'
+    | '/record/run/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -129,8 +148,9 @@ export interface FileRouteTypes {
     | '/progress'
     | '/templates'
     | '/record/$workoutId'
-    | '/record/run'
     | '/record'
+    | '/record/run/$runId'
+    | '/record/run'
   id:
     | '__root__'
     | '/'
@@ -143,6 +163,8 @@ export interface FileRouteTypes {
     | '/record/$workoutId'
     | '/record/run'
     | '/record/'
+    | '/record/run/$runId'
+    | '/record/run/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -227,18 +249,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecordRunRouteImport
       parentRoute: typeof RecordRoute
     }
+    '/record/run/': {
+      id: '/record/run/'
+      path: '/'
+      fullPath: '/record/run/'
+      preLoaderRoute: typeof RecordRunIndexRouteImport
+      parentRoute: typeof RecordRunRoute
+    }
+    '/record/run/$runId': {
+      id: '/record/run/$runId'
+      path: '/$runId'
+      fullPath: '/record/run/$runId'
+      preLoaderRoute: typeof RecordRunRunIdRouteImport
+      parentRoute: typeof RecordRunRoute
+    }
   }
 }
 
+interface RecordRunRouteChildren {
+  RecordRunRunIdRoute: typeof RecordRunRunIdRoute
+  RecordRunIndexRoute: typeof RecordRunIndexRoute
+}
+
+const RecordRunRouteChildren: RecordRunRouteChildren = {
+  RecordRunRunIdRoute: RecordRunRunIdRoute,
+  RecordRunIndexRoute: RecordRunIndexRoute,
+}
+
+const RecordRunRouteWithChildren = RecordRunRoute._addFileChildren(
+  RecordRunRouteChildren,
+)
+
 interface RecordRouteChildren {
   RecordWorkoutIdRoute: typeof RecordWorkoutIdRoute
-  RecordRunRoute: typeof RecordRunRoute
+  RecordRunRoute: typeof RecordRunRouteWithChildren
   RecordIndexRoute: typeof RecordIndexRoute
 }
 
 const RecordRouteChildren: RecordRouteChildren = {
   RecordWorkoutIdRoute: RecordWorkoutIdRoute,
-  RecordRunRoute: RecordRunRoute,
+  RecordRunRoute: RecordRunRouteWithChildren,
   RecordIndexRoute: RecordIndexRoute,
 }
 

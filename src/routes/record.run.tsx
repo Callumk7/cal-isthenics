@@ -1,7 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router"
-
-import { RunRecorder } from "@/running/run-recorder"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/record/run")({
-  component: RunRecorder,
+  component: () => <Outlet />,
 })
