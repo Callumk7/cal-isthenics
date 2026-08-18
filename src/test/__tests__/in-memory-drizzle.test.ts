@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm"
+import { and, asc, eq, isNull, lt, or } from "drizzle-orm"
 import { describe, expect, it } from "vitest"
 
 import * as schema from "@/db/schema"
@@ -67,6 +67,55 @@ describe("createInMemoryDrizzle", () => {
       },
       { id: "push", name: "Push", variants: [] },
     ])
+  })
+
+  it("supports nested boolean predicates and less-than comparisons", async () => {
+    const db = createInMemoryDrizzle()
+    db.seed("runningWorkouts", [
+      {
+        id: "a",
+        userId: "owner",
+        workoutDate: "2030-01-01",
+        distanceMetres: 1,
+      },
+      {
+        id: "b",
+        userId: "owner",
+        workoutDate: "2030-01-02",
+        distanceMetres: 2,
+      },
+      {
+        id: "c",
+        userId: "other",
+        workoutDate: "2030-01-01",
+        distanceMetres: 3,
+      },
+    ])
+
+    const nestedOr = await db.query.runningWorkouts.findMany({
+      where: or(
+        and(
+          eq(schema.runningWorkouts.userId, "owner"),
+          lt(schema.runningWorkouts.distanceMetres, 2)
+        ),
+        and(
+          eq(schema.runningWorkouts.userId, "other"),
+          eq(schema.runningWorkouts.distanceMetres, 3)
+        )
+      ),
+    })
+    const nestedAnd = await db.query.runningWorkouts.findMany({
+      where: and(
+        eq(schema.runningWorkouts.userId, "owner"),
+        or(
+          eq(schema.runningWorkouts.id, "a"),
+          lt(schema.runningWorkouts.distanceMetres, 3)
+        )
+      ),
+    })
+
+    expect(nestedOr.map((row) => row.id)).toEqual(["a", "c"])
+    expect(nestedAnd.map((row) => row.id)).toEqual(["a", "b"])
   })
 
   it("supports projected returning values for updates", async () => {

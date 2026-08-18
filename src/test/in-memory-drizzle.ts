@@ -26,6 +26,7 @@ const tableDefinitions = {
   workoutTemplates: schema.workoutTemplates,
   workoutTemplateExercises: schema.workoutTemplateExercises,
   workouts: schema.workouts,
+  runningWorkouts: schema.runningWorkouts,
   workoutExercises: schema.workoutExercises,
   workoutSets: schema.workoutSets,
 }
@@ -74,41 +75,73 @@ function compare(left: unknown, right: unknown): number {
   return left < right ? -1 : 1
 }
 
-function leafPredicates(value: SQL): SQL[] {
-  const nested = value.queryChunks.flatMap((chunk) =>
-    chunk instanceof SQL
-      ? leafPredicates(chunk)
-      : Array.isArray(chunk)
-        ? chunk.flatMap((item) =>
-            item instanceof SQL ? leafPredicates(item) : []
-          )
-        : []
-  )
-  return nested.length ? nested : [value]
+function separator(chunk: unknown): "and" | "or" | undefined {
+  if (!(chunk instanceof StringChunk)) return undefined
+  const value = String(chunk.value).trim().toLowerCase()
+  return value === "and" || value === "or" ? value : undefined
+}
+
+function split(items: unknown[], operator: "and" | "or"): unknown[][] {
+  const parts: unknown[][] = [[]]
+  for (const chunk of items) {
+    if (separator(chunk) === operator) parts.push([])
+    else parts[parts.length - 1].push(chunk)
+  }
+  return parts
+}
+
+function stripWrapping(items: unknown[]): unknown[] {
+  const result = [...items]
+  while (result.length >= 2) {
+    const first = result[0]
+    const last = result[result.length - 1]
+    if (
+      !(first instanceof StringChunk) ||
+      !(last instanceof StringChunk) ||
+      String(first.value).trim() !== "(" ||
+      String(last.value).trim() !== ")"
+    )
+      break
+    result.shift()
+    result.pop()
+  }
+  return result
 }
 
 function matches(row: Row, predicate: Predicate): boolean {
   if (!predicate) return true
-  const expression = text(predicate)
-  const leaves = leafPredicates(predicate)
-  if (leaves.length > 1 && expression.includes(" and "))
-    return leaves.every((part) => matches(row, part))
+  const level = stripWrapping([...predicate.queryChunks])
+  const orParts = split(level, "or")
+  if (orParts.length > 1)
+    return orParts.some((part) => matchesChunks(row, part))
+  const andParts = split(level, "and")
+  if (andParts.length > 1)
+    return andParts.every((part) => matchesChunks(row, part))
+  return matchesChunks(row, level)
+}
 
-  const all = chunks(predicate)
+function matchesChunks(row: Row, value: unknown[]): boolean {
+  const chunksAtLevel = stripWrapping(value)
+  if (chunksAtLevel.length === 1 && chunksAtLevel[0] instanceof SQL)
+    return matches(row, chunksAtLevel[0])
+
+  const expression = text(chunksAtLevel)
+  const all = chunks(chunksAtLevel)
   const column = all.find((chunk): chunk is Column => chunk instanceof Column)
   if (!column) {
     if (expression.includes("false")) return false
     throw new Error(`Unsupported in-memory predicate: ${expression}`)
   }
-  const value = row[columnKey(column)]
+  const valueAtColumn = row[columnKey(column)]
   const params = all
     .filter((chunk): chunk is Param => chunk instanceof Param)
     .map((param) => param.value)
-  if (expression.includes(" is null")) return value === null
-  if (expression.includes(" in ")) return params.includes(value)
-  if (expression.includes(">=")) return compare(value, params[0]) >= 0
-  if (expression.includes("<=")) return compare(value, params[0]) <= 0
-  if (expression.includes(" = ")) return value === params[0]
+  if (expression.includes(" is null")) return valueAtColumn === null
+  if (expression.includes(" in ")) return params.includes(valueAtColumn)
+  if (expression.includes(">=")) return compare(valueAtColumn, params[0]) >= 0
+  if (expression.includes("<=")) return compare(valueAtColumn, params[0]) <= 0
+  if (expression.includes("<")) return compare(valueAtColumn, params[0]) < 0
+  if (expression.includes(" = ")) return valueAtColumn === params[0]
   throw new Error(`Unsupported in-memory predicate: ${expression}`)
 }
 
