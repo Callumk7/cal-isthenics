@@ -7,6 +7,7 @@ import {
   deleteWorkoutTemplate as deleteWorkoutTemplateOp,
   getWorkoutTemplate,
   listWorkoutTemplates as listWorkoutTemplatesOp,
+  listWorkoutTemplateSummaries as listWorkoutTemplateSummariesOp,
   updateWorkoutTemplate as updateWorkoutTemplateOp,
 } from "./templates"
 
@@ -16,6 +17,12 @@ async function authenticatedUserId() {
 
 export const listWorkoutTemplates = createServerFn({ method: "GET" }).handler(
   async () => listWorkoutTemplatesOp(db, await authenticatedUserId())
+)
+
+export const listWorkoutTemplateSummaries = createServerFn({
+  method: "GET",
+}).handler(async () =>
+  listWorkoutTemplateSummariesOp(db, await authenticatedUserId())
 )
 
 export const readWorkoutTemplate = createServerFn({ method: "GET" })

@@ -4,6 +4,7 @@ import {
   createWorkoutTemplate,
   deleteWorkoutTemplate,
   getWorkoutTemplate,
+  listWorkoutTemplateSummaries,
   parseSetCount,
   updateWorkoutTemplate,
 } from "../templates"
@@ -57,6 +58,59 @@ function templateDatabase(variants = [activeVariant]) {
 }
 
 describe("workout template domain operations", () => {
+  it("lists template summaries with eligibility from one relational query", async () => {
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        id: "ready",
+        name: "Ready",
+        updatedAt: new Date("2030-01-01"),
+        exercises: [
+          { variant: { archivedAt: null, category: { archivedAt: null } } },
+        ],
+      },
+      {
+        id: "archived",
+        name: "Archived",
+        updatedAt: new Date("2030-01-02"),
+        exercises: [
+          {
+            variant: { archivedAt: new Date(), category: { archivedAt: null } },
+          },
+        ],
+      },
+      {
+        id: "empty",
+        name: "Empty",
+        updatedAt: new Date("2030-01-03"),
+        exercises: [],
+      },
+    ])
+
+    const summaries = await listWorkoutTemplateSummaries(
+      { query: { workoutTemplates: { findMany } } } as never,
+      "owner"
+    )
+
+    expect(findMany).toHaveBeenCalledOnce()
+    expect(summaries).toEqual([
+      expect.objectContaining({
+        id: "ready",
+        exerciseCount: 1,
+        canStart: true,
+      }),
+      expect.objectContaining({
+        id: "archived",
+        exerciseCount: 1,
+        canStart: false,
+      }),
+      expect.objectContaining({
+        id: "empty",
+        exerciseCount: 0,
+        canStart: false,
+      }),
+    ])
+  })
+
   it("parses only positive whole set counts", () => {
     expect(parseSetCount(1)).toEqual({ value: 1 })
     expect(parseSetCount("5")).toEqual({ value: 5 })
