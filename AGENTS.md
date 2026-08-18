@@ -2,7 +2,7 @@
 
 ## Project purpose
 
-Cal Isthenics is a web app for personalised calisthenics training. The current product, **FORM**, is a single-owner authenticated workout-tracking application. It provides a responsive application shell, password authentication, exercise-library management, and the foundations for workout templates, workout recording, history, and progress tracking.
+Cal Isthenics is a web app for personalised calisthenics training. The current product, **FORM**, is a single-owner authenticated workout-tracking application. It provides a responsive application shell, password authentication, exercise-library and workout-template management, and workout recording from blank sessions or templates. Saved workouts can be discovered, filtered by date, edited, and deleted; history and progress tracking remain placeholder destinations.
 
 There is no public signup. The owner account is provisioned operationally with `pnpm auth:provision`; see `docs/authentication-operations.md` before changing authentication, provisioning, or session behaviour.
 
@@ -22,13 +22,16 @@ There is no public signup. The owner account is provisioned operationally with `
   - `src/routes/__root.tsx` defines the root HTML shell, metadata, authentication redirects, authenticated application shell, scripts, and not-found UI.
   - `src/routes/index.tsx` redirects `/` to `/progress`.
   - `src/routes/login.tsx` provides the password-only owner login.
-  - `/progress`, `/record`, `/history`, `/templates`, and `/exercises` are the authenticated application destinations. Exercise management is implemented; the other product destinations are currently at varying foundation or placeholder stages.
+  - `/progress`, `/record`, `/history`, `/templates`, and `/exercises` are the authenticated application destinations. Exercise management, template management, and workout recording are implemented; history and progress are placeholders.
+  - `src/routes/record.tsx` is the layout for the workout-recording routes. `record.index.tsx` provides workout creation and saved-workout discovery, while `record.$workoutId.tsx` provides editing and deletion.
 - `src/components/app-shell.tsx` contains the responsive authenticated navigation and sign-out UI.
 - `src/components/ui/` contains reusable UI primitives/components. Interactive primitives should use `react-aria-components`.
 - `src/auth/` contains authentication, password hashing, session handling, route-access helpers, and auth server functions.
 - `src/db/` contains the Drizzle schema and D1 client. It is server-only and must not be imported by client components.
 - `src/exercises/` contains exercise-library domain logic, server functions, and management UI.
-- `src/templates/` contains workout-template domain logic and server functions; the route UI is not yet connected to this functionality.
+- `src/templates/` contains workout-template domain logic, authenticated server functions, and the template-management UI.
+- `src/record/` contains the workout discovery, creation, editing, and deletion UI.
+- `src/workouts/` contains workout validation and persistence logic plus authenticated server functions. Persisted workout exercises snapshot their category name, variant name, and difficulty multiplier rather than relying on mutable exercise-library display data.
 - `src/hooks/` contains shared React hooks.
 - `src/lib/` contains shared utilities such as `cn()` for class merging.
 - `src/router.tsx` creates and types the TanStack Router instance.
@@ -75,7 +78,7 @@ Do not introduce Node-native database drivers such as `better-sqlite3`.
 
 The schema in `src/db/schema.ts` currently covers users, sessions, exercise categories and variants, workout templates and their ordered exercises, workouts, workout exercises, and workout sets. Generate and commit SQL migrations with `pnpm db:generate`. Apply them to local D1 with `pnpm db:migrate` and to production with `pnpm db:migrate:remote`. Regenerate `worker-configuration.d.ts` with `pnpm cf-typegen` whenever Wrangler bindings change.
 
-Deploy with `pnpm deploy`. Apply remote migrations before deploying code that depends on them.
+`pnpm deploy` builds the app, applies pending remote D1 migrations through `pnpm deploy:cloudflare`, and then deploys with Wrangler. Do not bypass that migration step when deploying code that depends on schema changes.
 
 ## Useful commands
 
@@ -83,7 +86,8 @@ Deploy with `pnpm deploy`. Apply remote migrations before deploying code that de
 pnpm dev                # start local development on port 3000
 pnpm build              # production build
 pnpm preview            # preview the built app
-pnpm deploy             # build and deploy to Cloudflare Workers
+pnpm deploy             # build, apply remote migrations, and deploy
+pnpm deploy:cloudflare  # apply remote migrations and run Wrangler deploy
 pnpm test               # run tests once
 pnpm test:watch         # run tests in watch mode
 pnpm lint               # run ESLint
