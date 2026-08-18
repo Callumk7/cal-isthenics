@@ -106,8 +106,8 @@ async function validateInput(
   const entries: ValidExercise[] = []
   const ids: string[] = []
   const exerciseErrors: Array<Record<string, JsonValue> | null> = []
-  if (!Array.isArray(input.exercises))
-    fieldErrors.exercises = [{ exercise: "Enter valid exercises." }]
+  if (!Array.isArray(input.exercises) || input.exercises.length === 0)
+    fieldErrors.exercises = [{ exercise: "Add at least one exercise." }]
   else
     input.exercises.forEach((raw, index) => {
       const errors: Record<string, JsonValue> = {}
@@ -289,6 +289,12 @@ export async function createWorkoutFromTemplate(
     },
   })
   if (!template) return { ok: false, error: "not_found" }
+  if (template.exercises.length === 0)
+    return {
+      ok: false,
+      error: "template_ineligible",
+      message: "Add at least one exercise before starting this template.",
+    }
   const archived = template.exercises.find(
     (entry) =>
       entry.variant.archivedAt !== null ||
