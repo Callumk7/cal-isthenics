@@ -93,7 +93,8 @@ function validDate(value: unknown): value is string {
 async function validateInput(
   db: WorkoutDatabase,
   userId: string,
-  input: WorkoutInput
+  input: WorkoutInput,
+  requireExercise = true
 ) {
   const fieldErrors: Record<string, JsonValue> = {}
   if (!validDate(input.workoutDate))
@@ -106,7 +107,10 @@ async function validateInput(
   const entries: ValidExercise[] = []
   const ids: string[] = []
   const exerciseErrors: Array<Record<string, JsonValue> | null> = []
-  if (!Array.isArray(input.exercises) || input.exercises.length === 0)
+  if (
+    !Array.isArray(input.exercises) ||
+    (requireExercise && input.exercises.length === 0)
+  )
     fieldErrors.exercises = [{ exercise: "Add at least one exercise." }]
   else
     input.exercises.forEach((raw, index) => {
@@ -355,7 +359,7 @@ export async function updateWorkout(
     where: and(eq(workouts.id, input.id), eq(workouts.userId, userId)),
   })
   if (!existing) return { ok: false, error: "not_found" }
-  const validated = await validateInput(db, userId, input)
+  const validated = await validateInput(db, userId, input, false)
   if ("error" in validated)
     return { ok: false, error: "validation", fieldErrors: validated.error }
   const rows = buildRows(userId, validated, now, input.id)
