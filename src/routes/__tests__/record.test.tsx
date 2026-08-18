@@ -4,10 +4,8 @@ import {
   createRouter,
 } from "@tanstack/react-router"
 import { render, screen } from "@testing-library/react"
-import type { ReactNode } from "react"
 import { describe, expect, it, vi } from "vitest"
 
-import { Route } from "../record"
 import { routeTree } from "../../routeTree.gen"
 
 const mocks = vi.hoisted(() => ({
@@ -85,44 +83,16 @@ function renderRouterAt(path: string) {
   return render(<RouterProvider router={router} />)
 }
 
-describe("record route", () => {
-  it("loads templates, the active library, and recent workouts together", async () => {
-    mocks.listWorkoutTemplateSummaries.mockResolvedValue([{ id: "template" }])
-    mocks.listActiveExercises.mockResolvedValue([{ id: "category" }])
-    mocks.listWorkouts.mockResolvedValue([])
+function mockAuthAndDiscovery() {
+  mocks.getAuthState.mockResolvedValue({ authenticated: true, userId: "user" })
+  mocks.listActiveExercises.mockResolvedValue([])
+  mocks.listWorkoutTemplateSummaries.mockResolvedValue([])
+  mocks.listWorkouts.mockResolvedValue([])
+}
 
-    const loader = Route.options.loader as (
-      context: unknown
-    ) => Promise<unknown>
-    await expect(loader({})).resolves.toEqual({
-      templates: [{ id: "template" }],
-      library: [{ id: "category" }],
-      workouts: [],
-    })
-    expect(mocks.listWorkoutTemplateSummaries).toHaveBeenCalledOnce()
-    expect(mocks.listActiveExercises).toHaveBeenCalledOnce()
-    expect(mocks.listWorkouts).toHaveBeenCalledOnce()
-  })
-
-  it("renders loading and load-error feedback", () => {
-    const Pending = Route.options.pendingComponent as () => ReactNode
-    const ErrorComponent = Route.options.errorComponent as () => ReactNode
-    const { rerender } = render(<Pending />)
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Loading workout recorder"
-    )
-    rerender(<ErrorComponent />)
-    expect(screen.getByRole("alert")).toHaveTextContent("couldn't load")
-  })
-
-  it("renders the record page at /record", async () => {
-    mocks.getAuthState.mockResolvedValue({
-      authenticated: true,
-      userId: "user",
-    })
-    mocks.listActiveExercises.mockResolvedValue([])
-    mocks.listWorkoutTemplateSummaries.mockResolvedValue([])
-    mocks.listWorkouts.mockResolvedValue([])
+describe("record layout route", () => {
+  it("renders the discovery page at /record via the index route", async () => {
+    mockAuthAndDiscovery()
     renderRouterAt("/record")
     expect(
       await screen.findByRole("heading", { name: /record a workout/i })
@@ -132,14 +102,8 @@ describe("record route", () => {
     ).toBeInTheDocument()
   })
 
-  it("renders the workout edit UI at /record/$workoutId via the parent Outlet", async () => {
-    mocks.getAuthState.mockResolvedValue({
-      authenticated: true,
-      userId: "user",
-    })
-    mocks.listActiveExercises.mockResolvedValue([])
-    mocks.listWorkoutTemplateSummaries.mockResolvedValue([])
-    mocks.listWorkouts.mockResolvedValue([])
+  it("renders the workout edit UI at /record/$workoutId via the child route", async () => {
+    mockAuthAndDiscovery()
     mocks.readWorkout.mockResolvedValue(workout)
     renderRouterAt("/record/workout-1")
     expect(
@@ -155,5 +119,16 @@ describe("record route", () => {
     expect(
       screen.queryByRole("heading", { name: /record a workout/i })
     ).toBeNull()
+  })
+
+  it("does not let a discovery-loader failure block the nested edit route", async () => {
+    mockAuthAndDiscovery()
+    mocks.readWorkout.mockResolvedValue(workout)
+    // The index route's listWorkouts call fails — irrelevant to the edit page.
+    mocks.listWorkouts.mockRejectedValue(new Error("network"))
+    renderRouterAt("/record/workout-1")
+    expect(
+      await screen.findByRole("heading", { name: /edit workout/i })
+    ).toBeInTheDocument()
   })
 })

@@ -1,45 +1,9 @@
-import { createFileRoute, Outlet, useRouterState } from "@tanstack/react-router"
-
-import { listActiveExercises } from "@/exercises/server-functions"
-import { RecordManager } from "@/record/record-manager"
-import { listWorkoutTemplateSummaries } from "@/templates/server-functions"
-import { listWorkouts } from "@/workouts/server-functions"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 export const Route = createFileRoute("/record")({
-  loader: async () => {
-    const [templates, library, workouts] = await Promise.all([
-      listWorkoutTemplateSummaries(),
-      listActiveExercises(),
-      listWorkouts(),
-    ])
-    return { templates, library, workouts }
-  },
-  pendingComponent: () => (
-    <div className="mx-auto max-w-3xl p-4 md:p-8" role="status">
-      Loading workout recorder…
-    </div>
-  ),
-  errorComponent: () => (
-    <div className="mx-auto max-w-3xl p-4 md:p-8" role="alert">
-      We couldn't load the workout recorder. Refresh the page to try again.
-    </div>
-  ),
-  component: RecordPage,
+  // Layout route: /record renders the discovery page (record.index) and
+  // /record/$workoutId renders the detail/edit page (record.$workoutId).
+  // The layout itself loads nothing, so the nested edit route can never be
+  // blocked by a failure in the discovery view's loader.
+  component: () => <Outlet />,
 })
-
-function RecordPage() {
-  const { templates, library, workouts } = Route.useLoaderData()
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  })
-  // /record/$workoutId is a child of this route; render its UI instead of the
-  // discovery/record page so saved-workout links open the edit screen.
-  if (pathname !== "/record") return <Outlet />
-  return (
-    <RecordManager
-      initialTemplates={templates}
-      initialLibrary={library}
-      initialWorkouts={workouts}
-    />
-  )
-}
