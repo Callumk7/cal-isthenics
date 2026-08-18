@@ -31,7 +31,11 @@ import {
 
 const repsError = "Enter a positive whole number of reps."
 const key = () => crypto.randomUUID()
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => {
+  const now = new Date()
+  const offset = now.getTimezoneOffset() * 60_000
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10)
+}
 
 type SetRow = { key: string; reps: string }
 type ExerciseRow = {
@@ -84,18 +88,20 @@ export function RecordManager({
   )
 
   function discard() {
-    if (!editor || window.confirm("Discard your unsaved workout changes?")) {
-      setEditor(null)
-      return true
-    }
-    return false
+    setEditor(null)
+  }
+  function confirmDiscard() {
+    if (editor && !window.confirm("Discard your unsaved workout changes?"))
+      return false
+    setEditor(null)
+    return true
   }
   function blank() {
-    if (editor && !discard()) return
+    if (!confirmDiscard()) return
     setEditor({ date: today(), name: "", notes: "", rows: [] })
   }
   async function startTemplate(template: WorkoutTemplateSummary) {
-    if (editor && !discard()) return
+    if (!confirmDiscard()) return
     setLoadingTemplate(template.id)
     try {
       const detail = await readWorkoutTemplate({ data: { id: template.id } })
@@ -241,7 +247,7 @@ function WorkoutEditor({
 }: {
   editor: Editor
   library: ActiveCategory[]
-  onDiscard: () => boolean
+  onDiscard: () => void
   onSaved: (id: string) => void
 }) {
   const [form, setForm] = useState(editor)
@@ -380,7 +386,14 @@ function WorkoutEditor({
         </div>
         <Button
           variant="ghost"
-          onPress={() => !dirty || onDiscard()}
+          onPress={() => {
+            if (
+              dirty &&
+              !window.confirm("Discard your unsaved workout changes?")
+            )
+              return
+            onDiscard()
+          }}
           isDisabled={saving}
         >
           Discard
