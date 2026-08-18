@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useEffectEvent, useState } from "react"
 import type { FormEvent } from "react"
 import {
   ChevronDownIcon,
@@ -264,16 +264,18 @@ function WorkoutEditor({
       : []
   )
 
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (dirty) {
-        event.preventDefault()
-        event.returnValue = ""
-      }
+  const onBeforeUnload = useEffectEvent((event: BeforeUnloadEvent) => {
+    if (dirty) {
+      event.preventDefault()
+      event.returnValue = ""
     }
+  })
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => onBeforeUnload(event)
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
-  }, [dirty])
+  }, [])
   const changed = (next: Editor) => {
     setDirty(true)
     setForm(next)

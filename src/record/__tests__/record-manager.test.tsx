@@ -238,6 +238,40 @@ describe("RecordManager", () => {
     expect(workouts.createWorkout).not.toHaveBeenCalled()
   })
 
+  it("registers one beforeunload listener that reads the latest dirty state", () => {
+    const addEventListener = vi.spyOn(window, "addEventListener")
+    render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+    fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
+
+    const beforeUnloadCalls = addEventListener.mock.calls.filter(
+      ([type]) => String(type) === "beforeunload"
+    )
+    expect(beforeUnloadCalls).toHaveLength(1)
+    const listener = beforeUnloadCalls[0][1] as EventListener
+    const cleanEvent = {
+      preventDefault: vi.fn(),
+      returnValue: "",
+    } as unknown as BeforeUnloadEvent
+    listener(cleanEvent)
+    expect(cleanEvent.preventDefault).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText("Workout name (optional)"), {
+      target: { value: "Push day" },
+    })
+    expect(
+      addEventListener.mock.calls.filter(
+        ([type]) => String(type) === "beforeunload"
+      )
+    ).toHaveLength(1)
+    const dirtyEvent = {
+      preventDefault: vi.fn(),
+      returnValue: "",
+    } as unknown as BeforeUnloadEvent
+    listener(dirtyEvent)
+    expect(dirtyEvent.preventDefault).toHaveBeenCalledOnce()
+    expect(dirtyEvent.returnValue).toBe("")
+  })
+
   it("confirms before discarding unsaved changes but exits cleanly when clean", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
     render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
