@@ -128,11 +128,13 @@ export function ExerciseLibraryManager({
         </div>
         <Button
           className="h-11 px-3"
+          aria-label="Add category"
           onPress={() => setEditor({ kind: "category" })}
         >
           <PlusIcon aria-hidden="true" />
-          <span className="hidden min-[390px]:inline">Category</span>
-          <span className="sr-only min-[390px]:hidden">Add category</span>
+          <span aria-hidden="true" className="hidden min-[390px]:inline">
+            Category
+          </span>
         </Button>
       </div>
 

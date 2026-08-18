@@ -168,11 +168,13 @@ export function TemplateManager({
         {hasLibrary && (
           <Button
             className="h-11 px-3"
+            aria-label="New template"
             onPress={() => setEditor({ name: "", rows: [] })}
           >
             <PlusIcon aria-hidden="true" />
-            <span className="hidden min-[390px]:inline">New template</span>
-            <span className="sr-only min-[390px]:hidden">New template</span>
+            <span aria-hidden="true" className="hidden min-[390px]:inline">
+              New template
+            </span>
           </Button>
         )}
       </div>
@@ -495,7 +497,9 @@ function TemplateEditor({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">{row.variantName}</p>
+                      <p className="font-medium break-words">
+                        {row.variantName}
+                      </p>
                       {row.archived && (
                         <Badge variant="outline">Archived</Badge>
                       )}
