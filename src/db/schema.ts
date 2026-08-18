@@ -156,6 +156,48 @@ export const workouts = sqliteTable(
   ]
 )
 
+/** A retrospectively recorded, user-owned running activity. */
+export const runningWorkouts = sqliteTable(
+  "running_workouts",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Calendar-only ISO date. Multiple runs per user and date are allowed. */
+    workoutDate: text("workout_date").notNull(),
+    distanceMetres: integer("distance_metres").notNull(),
+    durationSeconds: integer("duration_seconds").notNull(),
+    calories: integer("calories").notNull(),
+    /** Optional manual speed in integer thousandths of km/h. */
+    manualSpeedMilliKmH: integer("manual_speed_milli_kmh"),
+    ...timestamps,
+  },
+  (table) => [
+    index("running_workouts_user_date_idx").on(table.userId, table.workoutDate),
+    check(
+      "running_workouts_valid_date_check",
+      sql`length(${table.workoutDate}) = 10 and coalesce(date(${table.workoutDate}), '') = ${table.workoutDate}`
+    ),
+    check(
+      "running_workouts_positive_distance_check",
+      sql`${table.distanceMetres} > 0`
+    ),
+    check(
+      "running_workouts_positive_duration_check",
+      sql`${table.durationSeconds} > 0`
+    ),
+    check(
+      "running_workouts_positive_calories_check",
+      sql`${table.calories} > 0`
+    ),
+    check(
+      "running_workouts_positive_manual_speed_check",
+      sql`${table.manualSpeedMilliKmH} is null or ${table.manualSpeedMilliKmH} > 0`
+    ),
+  ]
+)
+
 /** Ordered exercise with immutable library snapshots for historical calculations. */
 export const workoutExercises = sqliteTable(
   "workout_exercises",
@@ -222,6 +264,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   exerciseVariants: many(exerciseVariants),
   workoutTemplates: many(workoutTemplates),
   workouts: many(workouts),
+  runningWorkouts: many(runningWorkouts),
 }))
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
@@ -278,6 +321,15 @@ export const workoutsRelations = relations(workouts, ({ one, many }) => ({
   user: one(users, { fields: [workouts.userId], references: [users.id] }),
   exercises: many(workoutExercises),
 }))
+export const runningWorkoutsRelations = relations(
+  runningWorkouts,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [runningWorkouts.userId],
+      references: [users.id],
+    }),
+  })
+)
 export const workoutExercisesRelations = relations(
   workoutExercises,
   ({ one, many }) => ({
