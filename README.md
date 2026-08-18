@@ -9,7 +9,7 @@ A web app for personalised calisthenics training. **FORM** currently provides a 
 - Vite
 - Tailwind CSS v4
 - shadcn/ui-style components built with React Aria Components
-- Vitest, Testing Library, ESLint, Prettier
+- Vitest, Testing Library, oxlint, oxfmt
 
 ## Getting started
 
@@ -34,10 +34,10 @@ pnpm dev       # start local dev server on port 3000
 pnpm build     # create a production build
 pnpm preview   # preview the built app
 pnpm test      # run Vitest tests
-pnpm lint      # run ESLint
+pnpm lint      # run oxlint
 pnpm typecheck # run TypeScript checks without emitting files
-pnpm check     # check formatting with Prettier
-pnpm format    # format source files with Prettier
+pnpm check     # check formatting with oxfmt
+pnpm format    # format source files with oxfmt
 ```
 
 ## Project structure

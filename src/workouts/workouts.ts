@@ -33,7 +33,12 @@ export type WorkoutMutationResult<T> =
     }
 
 type JsonValue =
-  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
 
 export type WorkoutDetail = typeof workouts.$inferSelect & {
   exercises: Array<
