@@ -15,6 +15,10 @@ import { Button } from "@/components/ui/button"
 import { RouterLink } from "@/components/ui/router-link"
 import { cn } from "@/lib/utils"
 
+export function isNavActive(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
+
 const navigation = [
   { label: "Progress", to: "/progress", icon: ChartNoAxesColumnIncreasingIcon },
   { label: "Record", to: "/record", icon: ClipboardListIcon },
@@ -28,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     select: (state) => state.location.pathname,
   })
   const [loggingOut, setLoggingOut] = useState(false)
-  const current = navigation.find((item) => item.to === pathname)
+  const current = navigation.find((item) => isNavActive(pathname, item.to))
 
   async function signOut() {
     setLoggingOut(true)
@@ -42,7 +46,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Brand />
         <nav aria-label="Primary navigation" className="flex-1 space-y-1 p-3">
           {navigation.map((item) => (
-            <NavItem key={item.to} {...item} active={pathname === item.to} />
+            <NavItem
+              key={item.to}
+              {...item}
+              active={isNavActive(pathname, item.to)}
+            />
           ))}
         </nav>
         <div className="border-t p-3">
@@ -85,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <NavItem
             key={item.to}
             {...item}
-            active={pathname === item.to}
+            active={isNavActive(pathname, item.to)}
             mobile
           />
         ))}

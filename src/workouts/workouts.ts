@@ -409,6 +409,7 @@ export async function listWorkouts(
   return db.query.workouts.findMany({
     where: and(...conditions),
     orderBy: [desc(workouts.workoutDate), desc(workouts.createdAt)],
+    with: { exercises: true },
     limit,
   })
 }

@@ -3,14 +3,16 @@ import { createFileRoute } from "@tanstack/react-router"
 import { listActiveExercises } from "@/exercises/server-functions"
 import { RecordManager } from "@/record/record-manager"
 import { listWorkoutTemplateSummaries } from "@/templates/server-functions"
+import { listWorkouts } from "@/workouts/server-functions"
 
 export const Route = createFileRoute("/record")({
   loader: async () => {
-    const [templates, library] = await Promise.all([
+    const [templates, library, workouts] = await Promise.all([
       listWorkoutTemplateSummaries(),
       listActiveExercises(),
+      listWorkouts(),
     ])
-    return { templates, library }
+    return { templates, library, workouts }
   },
   pendingComponent: () => (
     <div className="mx-auto max-w-3xl p-4 md:p-8" role="status">
@@ -26,6 +28,12 @@ export const Route = createFileRoute("/record")({
 })
 
 function RecordPage() {
-  const { templates, library } = Route.useLoaderData()
-  return <RecordManager initialTemplates={templates} initialLibrary={library} />
+  const { templates, library, workouts } = Route.useLoaderData()
+  return (
+    <RecordManager
+      initialTemplates={templates}
+      initialLibrary={library}
+      initialWorkouts={workouts}
+    />
+  )
 }
