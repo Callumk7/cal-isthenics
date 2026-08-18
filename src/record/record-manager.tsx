@@ -178,9 +178,11 @@ export function RecordManager({
                 initialTemplates.map((template) => (
                   <div key={template.id} className="border p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium">{template.name}</h3>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-medium break-words">
+                            {template.name}
+                          </h3>
                           {!template.canStart && (
                             <Badge variant="outline">Ineligible</Badge>
                           )}
@@ -253,8 +255,8 @@ export function RecordManager({
                 // cast the shape we know the route expects.
                 params={{ workoutId: workout.id } as never}
               >
-                <span>
-                  <span className="block font-medium">
+                <span className="min-w-0 break-words">
+                  <span className="block min-w-0 font-medium break-words">
                     {workout.name || "Workout"}
                   </span>
                   <span className="text-xs text-muted-foreground">

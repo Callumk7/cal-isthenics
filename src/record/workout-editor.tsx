@@ -136,7 +136,10 @@ export function WorkoutEditor({
       })
     )
     setSetErrors(errors)
-    if (!savableRows.length || savableRows.some((row) => !row.sets.length)) {
+    if (
+      !form.rows.length ||
+      (savableRows.length > 0 && savableRows.some((row) => !row.sets.length))
+    ) {
       setSaveError("Add at least one set for every exercise.")
       return
     }

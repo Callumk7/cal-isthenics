@@ -114,6 +114,25 @@ beforeEach(() => {
 })
 
 describe("WorkoutEditor (edit mode)", () => {
+  it("maps a null source variant to an unavailable editor row", () => {
+    const editor = editorFromWorkout(
+      workoutWith([
+        {
+          sourceVariantId: null,
+          variantName: "Removed row",
+          categoryName: "Pull",
+          reps: [5],
+        },
+      ])
+    )
+
+    expect(editor.rows[0]).toMatchObject({
+      variantId: "",
+      variantName: "Removed row",
+      categoryName: "Pull",
+    })
+  })
+
   it("loads an edit form prefilled from the saved workout", () => {
     const workout = workoutWith([
       {
