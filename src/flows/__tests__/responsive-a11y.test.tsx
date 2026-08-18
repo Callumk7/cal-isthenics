@@ -207,6 +207,60 @@ describe("responsive and accessibility regression guards", () => {
     await waitFor(() => expect(trigger).toHaveFocus())
   })
 
+  it("saves an edit that drops every unavailable row through the update payload", async () => {
+    const user = userEvent.setup()
+    api.updateWorkout.mockResolvedValue({
+      ok: true,
+      value: { id: "workout" },
+    })
+    const onSaved = vi.fn()
+    render(
+      <WorkoutEditor
+        editor={{
+          date: "2030-02-03",
+          name: "Cleanup",
+          notes: "",
+          rows: [
+            {
+              key: "gone-1",
+              variantId: "",
+              variantName: "Deleted pull-up",
+              categoryName: "Pull",
+              notes: "",
+              sets: [{ key: "set-1", reps: "8" }],
+            },
+            {
+              key: "gone-2",
+              variantId: "",
+              variantName: "Deleted ring row",
+              categoryName: "Pull",
+              notes: "",
+              sets: [{ key: "set-2", reps: "6" }],
+            },
+          ],
+        }}
+        library={library}
+        workoutId="workout"
+        onDiscard={vi.fn()}
+        onSaved={onSaved}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Save workout" }))
+    await waitFor(() =>
+      expect(api.updateWorkout).toHaveBeenCalledWith({
+        data: {
+          id: "workout",
+          workoutDate: "2030-02-03",
+          name: "Cleanup",
+          notes: "",
+          exercises: [],
+        },
+      })
+    )
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith("workout"))
+  })
+
   it("gives compact create controls stable names and requires archive confirmation", async () => {
     const user = userEvent.setup()
     render(

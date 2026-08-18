@@ -286,6 +286,49 @@ describe("core workout flows at the server boundary", () => {
     ).resolves.toMatchObject({ ok: true })
   })
 
+  it("drops every unavailable exercise row when an edit is saved", async () => {
+    const { variants } = await categoryAndVariants()
+    const logged = await createWorkout(db, owner, {
+      workoutDate: "2030-02-03",
+      name: "Doomed rows",
+      exercises: [
+        { variantId: variants[0].id, sets: [8] },
+        { variantId: variants[1].id, sets: [4] },
+      ],
+    })
+    if (!logged.ok) return
+    // Both source variants are hard-deleted — impossible through the public
+    // archive API, but a state the edit form explicitly supports ("removed
+    // when saved") once the library rows are gone.
+    db._tables.exerciseVariants.rows = db._tables.exerciseVariants.rows.filter(
+      (row) => row.id !== variants[0].id && row.id !== variants[1].id
+    )
+    await expect(
+      updateWorkout(db, owner, {
+        id: logged.value.id,
+        workoutDate: "2030-02-04",
+        name: "All rows dropped",
+        exercises: [],
+      })
+    ).resolves.toMatchObject({
+      ok: true,
+      value: { name: "All rows dropped", exercises: [] },
+    })
+    const after = await getWorkout(db, owner, logged.value.id)
+    expect(after?.workoutDate).toBe("2030-02-04")
+    expect(after?.exercises).toEqual([])
+    expect(db._tables.workoutExercises.rows).toHaveLength(0)
+    expect(db._tables.workoutSets.rows).toHaveLength(0)
+    // A blank create is still rejected; only edits may end up empty.
+    await expect(
+      createWorkout(db, owner, {
+        workoutDate: "2030-02-05",
+        name: "Empty create",
+        exercises: [],
+      })
+    ).resolves.toMatchObject({ ok: false, error: "validation" })
+  })
+
   it("keeps templates and saved workouts independent", async () => {
     const { variants } = await categoryAndVariants()
     const template = await createWorkoutTemplate(db, owner, {
