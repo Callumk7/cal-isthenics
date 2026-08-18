@@ -3,6 +3,9 @@ import type { DrizzleD1Database } from "drizzle-orm/d1"
 
 import type * as schema from "../db/schema"
 import { runningWorkouts } from "../db/schema"
+import { isValidCalendarDate } from "../lib/date"
+
+export { isValidCalendarDate }
 
 export type RunningDatabase = DrizzleD1Database<typeof schema>
 export type RunningWorkoutInput = {
@@ -25,18 +28,9 @@ export type RunningResult<T> =
       fieldErrors?: Record<string, string>
     }
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const DECIMAL_PATTERN = /^\d+(?:\.\d{1,3})?$/
 const MAX_LIST_LIMIT = 100
 const MAX_RANGE_DAYS = 366
-
-export function isValidCalendarDate(value: unknown): value is string {
-  if (typeof value !== "string" || !DATE_PATTERN.test(value)) return false
-  const date = new Date(`${value}T00:00:00Z`)
-  return (
-    !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value
-  )
-}
 
 function parsePositiveDecimalThousandths(
   value: unknown,

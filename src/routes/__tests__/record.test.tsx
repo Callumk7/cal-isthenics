@@ -4,6 +4,7 @@ import {
   createRouter,
 } from "@tanstack/react-router"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import { routeTree } from "../../routeTree.gen"
@@ -18,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   updateWorkout: vi.fn(),
   deleteWorkout: vi.fn(),
   getAuthState: vi.fn(),
+  createRunningWorkout: vi.fn(),
 }))
 
 vi.mock("@/templates/server-functions", () => ({
@@ -37,6 +39,9 @@ vi.mock("@/workouts/server-functions", () => ({
 vi.mock("@/auth/server-functions", () => ({
   getAuthState: mocks.getAuthState,
   logout: vi.fn(),
+}))
+vi.mock("@/running/server-functions", () => ({
+  createRunningWorkout: mocks.createRunningWorkout,
 }))
 
 const workout = {
@@ -130,5 +135,35 @@ describe("record layout route", () => {
     expect(
       await screen.findByRole("heading", { name: /edit workout/i })
     ).toBeInTheDocument()
+  })
+
+  it("renders /record/run with Record navigation active", async () => {
+    mockAuthAndDiscovery()
+    renderRouterAt("/record/run")
+    expect(
+      await screen.findByRole("heading", { name: /record a run/i })
+    ).toBeInTheDocument()
+    expect(
+      screen
+        .getAllByRole("link", { name: /^record$/i })
+        .some((link) => link.getAttribute("aria-current") === "page")
+    ).toBe(true)
+  })
+
+  it("navigates from the discovery Record a run entry to the run form", async () => {
+    const user = userEvent.setup()
+    mockAuthAndDiscovery()
+    renderRouterAt("/record")
+    const section = await screen.findByRole("heading", {
+      name: /record a run/i,
+    })
+    await user.click(
+      screen.getByRole("link", { name: /record a run/i, hidden: false })
+    )
+    expect(section).not.toBeNull()
+    expect(
+      await screen.findByRole("heading", { name: /record a run/i })
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText("Distance (km)")).toBeInTheDocument()
   })
 })

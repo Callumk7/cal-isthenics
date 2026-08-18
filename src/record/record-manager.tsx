@@ -1,9 +1,10 @@
 import { useState } from "react"
-import { DumbbellIcon, PlusIcon } from "lucide-react"
+import { DumbbellIcon, FootprintsIcon, PlusIcon } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, LinkButton } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { localCalendarToday } from "@/lib/date"
 import type { ActiveCategory } from "@/templates/template-manager"
 import type {
   WorkoutTemplateDetail,
@@ -15,10 +16,6 @@ import { Success, WorkoutEditor } from "./workout-editor"
 import type { Editor } from "./workout-editor"
 
 const key = () => crypto.randomUUID()
-const today = () =>
-  new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 10)
 
 type SavedWorkout = {
   id: string
@@ -63,7 +60,7 @@ export function RecordManager({
       category.variants.some((variant) => variant.archivedAt === null)
   )
   const blank = () =>
-    setEditor({ date: today(), name: "", notes: "", rows: [] })
+    setEditor({ date: localCalendarToday(), name: "", notes: "", rows: [] })
   async function startTemplate(template: WorkoutTemplateSummary) {
     setLoadingTemplate(template.id)
     try {
@@ -74,7 +71,7 @@ export function RecordManager({
       }
       setEditor({
         templateId: detail.id,
-        date: today(),
+        date: localCalendarToday(),
         name: detail.name,
         notes: "",
         rows: detail.exercises.map(rowFromTemplate),
@@ -148,6 +145,24 @@ export function RecordManager({
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
+      <section
+        className="mb-6 border bg-muted/30 p-4"
+        aria-labelledby="run-entry-heading"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h2 id="run-entry-heading" className="font-medium">
+              Record a run
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Log a running workout without exercises or templates.
+            </p>
+          </div>
+          <LinkButton className="h-11" to="/record/run">
+            <FootprintsIcon aria-hidden="true" /> Record a run
+          </LinkButton>
+        </div>
+      </section>
       {!hasLibrary ? (
         <div className="border border-dashed p-8 text-center">
           <DumbbellIcon className="mx-auto mb-3 size-7 text-muted-foreground" />

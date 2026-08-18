@@ -18,6 +18,7 @@ import { Route as RecordRouteImport } from './routes/record'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as RecordIndexRouteImport } from './routes/record.index'
 import { Route as RecordWorkoutIdRouteImport } from './routes/record.$workoutId'
+import { Route as RecordRunRouteImport } from './routes/record.run'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,6 +65,11 @@ const RecordWorkoutIdRoute = RecordWorkoutIdRouteImport.update({
   path: '/$workoutId',
   getParentRoute: () => RecordRoute,
 } as any)
+const RecordRunRoute = RecordRunRouteImport.update({
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => RecordRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/record': typeof RecordRouteWithChildren
   '/templates': typeof TemplatesRoute
   '/record/$workoutId': typeof RecordWorkoutIdRoute
+  '/record/run': typeof RecordRunRoute
   '/record/': typeof RecordIndexRoute
 }
 export interface FileRoutesByTo {
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/templates': typeof TemplatesRoute
   '/record/$workoutId': typeof RecordWorkoutIdRoute
+  '/record/run': typeof RecordRunRoute
   '/record': typeof RecordIndexRoute
 }
 export interface FileRoutesById {
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/record': typeof RecordRouteWithChildren
   '/templates': typeof TemplatesRoute
   '/record/$workoutId': typeof RecordWorkoutIdRoute
+  '/record/run': typeof RecordRunRoute
   '/record/': typeof RecordIndexRoute
 }
 export interface FileRouteTypes {
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/record'
     | '/templates'
     | '/record/$workoutId'
+    | '/record/run'
     | '/record/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/templates'
     | '/record/$workoutId'
+    | '/record/run'
     | '/record'
   id:
     | '__root__'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/record'
     | '/templates'
     | '/record/$workoutId'
+    | '/record/run'
     | '/record/'
   fileRoutesById: FileRoutesById
 }
@@ -208,16 +220,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecordWorkoutIdRouteImport
       parentRoute: typeof RecordRoute
     }
+    '/record/run': {
+      id: '/record/run'
+      path: '/run'
+      fullPath: '/record/run'
+      preLoaderRoute: typeof RecordRunRouteImport
+      parentRoute: typeof RecordRoute
+    }
   }
 }
 
 interface RecordRouteChildren {
   RecordWorkoutIdRoute: typeof RecordWorkoutIdRoute
+  RecordRunRoute: typeof RecordRunRoute
   RecordIndexRoute: typeof RecordIndexRoute
 }
 
 const RecordRouteChildren: RecordRouteChildren = {
   RecordWorkoutIdRoute: RecordWorkoutIdRoute,
+  RecordRunRoute: RecordRunRoute,
   RecordIndexRoute: RecordIndexRoute,
 }
 
