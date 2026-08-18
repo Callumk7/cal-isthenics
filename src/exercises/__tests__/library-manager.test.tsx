@@ -105,6 +105,11 @@ describe("ExerciseLibraryManager", () => {
     fireEvent.click(screen.getByRole("button", { name: "Archive" }))
 
     await waitFor(() =>
+      expect(api.removeExerciseVariant).toHaveBeenCalledWith({
+        data: { id: "variant-1" },
+      })
+    )
+    await waitFor(() =>
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
     )
     expect(screen.getByText("Archived")).toBeInTheDocument()

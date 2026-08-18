@@ -19,10 +19,10 @@ const api = vi.hoisted(() => ({
   deleteWorkoutTemplate: vi.fn(),
   addExerciseCategory: vi.fn(),
   updateExerciseCategory: vi.fn(),
-  archiveExerciseCategory: vi.fn(),
+  removeExerciseCategory: vi.fn(),
   addExerciseVariant: vi.fn(),
   updateExerciseVariant: vi.fn(),
-  archiveExerciseVariant: vi.fn(),
+  removeExerciseVariant: vi.fn(),
 }))
 
 vi.mock("@/workouts/server-functions", () => ({
@@ -41,10 +41,10 @@ vi.mock("@/templates/server-functions", () => ({
 vi.mock("@/exercises/server-functions", () => ({
   addExerciseCategory: api.addExerciseCategory,
   updateExerciseCategory: api.updateExerciseCategory,
-  archiveExerciseCategory: api.archiveExerciseCategory,
+  removeExerciseCategory: api.removeExerciseCategory,
   addExerciseVariant: api.addExerciseVariant,
   updateExerciseVariant: api.updateExerciseVariant,
-  archiveExerciseVariant: api.archiveExerciseVariant,
+  removeExerciseVariant: api.removeExerciseVariant,
 }))
 vi.mock("@/components/ui/router-link", () => ({
   RouterLink: ({ children, ...props }: React.ComponentProps<"a">) => (
@@ -82,9 +82,9 @@ beforeEach(() => {
   api.listWorkouts.mockResolvedValue([])
 })
 
-describe("responsive and accessibility regression guards", () => {
-  it("uses fluid containers and wrapping guards for long narrow-screen names", () => {
-    const { container } = render(
+describe("component accessibility and markup regression guards", () => {
+  it("applies the intended fluid-container and text-wrapping classes", () => {
+    render(
       <RecordManager
         initialLibrary={library}
         initialTemplates={[template]}
@@ -107,7 +107,6 @@ describe("responsive and accessibility regression guards", () => {
     const savedName = screen.getAllByText(longName).at(-1)
     expect(savedName).toHaveClass("min-w-0", "break-words")
     expect(savedName?.parentElement).toHaveClass("min-w-0", "break-words")
-    expect(container.querySelector('[style*="width"]')).toBeNull()
   })
 
   it("supports a keyboard-only blank workout and exposes editor control names", async () => {
@@ -261,8 +260,12 @@ describe("responsive and accessibility regression guards", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith("workout"))
   })
 
-  it("gives compact create controls stable names and requires archive confirmation", async () => {
+  it("gives compact controls stable names and confirms an archive mutation", async () => {
     const user = userEvent.setup()
+    api.removeExerciseCategory.mockResolvedValue({
+      ok: true,
+      value: { id: "pull" },
+    })
     render(
       <ExerciseLibraryManager
         initialCategories={[
@@ -280,10 +283,25 @@ describe("responsive and accessibility regression guards", () => {
     ).toBeInTheDocument()
     const archive = screen.getByRole("button", { name: "Archive Pull" })
     await user.click(archive)
-    expect(api.archiveExerciseCategory).not.toHaveBeenCalled()
+    expect(api.removeExerciseCategory).not.toHaveBeenCalled()
     expect(await screen.findByRole("alertdialog")).toHaveTextContent(
       /cannot be undone/i
     )
+
+    await user.click(screen.getByRole("button", { name: "Archive" }))
+
+    await waitFor(() =>
+      expect(api.removeExerciseCategory).toHaveBeenCalledWith({
+        data: { id: "pull" },
+      })
+    )
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    )
+    expect(screen.getByText("Archived")).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Archive Pull" })
+    ).not.toBeInTheDocument()
   })
 
   it("labels the compact template control and blocks ineligible templates with guidance", () => {

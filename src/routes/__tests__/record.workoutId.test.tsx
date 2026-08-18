@@ -71,10 +71,15 @@ describe("record.$workoutId route", () => {
     mocks.listActiveExercises.mockResolvedValue([])
 
     const loader = Route.options.loader as (ctx: unknown) => Promise<unknown>
-    await loader({ params: { workoutId: "missing" } }).catch((error) => {
+    try {
+      await loader({ params: { workoutId: "missing" } })
+    } catch (error) {
       expect(isRedirect(error)).toBe(true)
+      if (!isRedirect(error)) throw error
       expect(error.options.to).toBe("/record")
-    })
+      return
+    }
+    throw new Error("Expected the loader to redirect")
   })
 
   it("renders loading and load-error feedback", () => {

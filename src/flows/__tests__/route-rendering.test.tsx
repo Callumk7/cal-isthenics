@@ -3,7 +3,7 @@ import {
   createMemoryHistory,
   createRouter,
 } from "@tanstack/react-router"
-import { cleanup, render, screen } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { routeTree } from "@/routeTree.gen"
@@ -14,10 +14,10 @@ const api = vi.hoisted(() => ({
   listActiveExercises: vi.fn(),
   addExerciseCategory: vi.fn(),
   updateExerciseCategory: vi.fn(),
-  archiveExerciseCategory: vi.fn(),
+  removeExerciseCategory: vi.fn(),
   addExerciseVariant: vi.fn(),
   updateExerciseVariant: vi.fn(),
-  archiveExerciseVariant: vi.fn(),
+  removeExerciseVariant: vi.fn(),
   listWorkoutTemplateSummaries: vi.fn(),
   readWorkoutTemplate: vi.fn(),
   createWorkoutTemplate: vi.fn(),
@@ -40,10 +40,10 @@ vi.mock("@/exercises/server-functions", () => ({
   listActiveExercises: api.listActiveExercises,
   addExerciseCategory: api.addExerciseCategory,
   updateExerciseCategory: api.updateExerciseCategory,
-  archiveExerciseCategory: api.archiveExerciseCategory,
+  removeExerciseCategory: api.removeExerciseCategory,
   addExerciseVariant: api.addExerciseVariant,
   updateExerciseVariant: api.updateExerciseVariant,
-  archiveExerciseVariant: api.archiveExerciseVariant,
+  removeExerciseVariant: api.removeExerciseVariant,
 }))
 vi.mock("@/templates/server-functions", () => ({
   listWorkoutTemplateSummaries: api.listWorkoutTemplateSummaries,
@@ -62,24 +62,6 @@ vi.mock("@/workouts/server-functions", () => ({
 }))
 
 const now = new Date("2030-01-01T00:00:00Z")
-const category = {
-  id: "pull",
-  userId: "owner",
-  name: "Pull",
-  archivedAt: null,
-  createdAt: now,
-  updatedAt: now,
-  variants: [] as Array<{
-    id: string
-    userId: string
-    categoryId: string
-    name: string
-    difficultyMultiplier: number
-    archivedAt: Date | null
-    createdAt: Date
-    updatedAt: Date
-  }>,
-}
 const variant = {
   id: "ring-row",
   userId: "owner",
@@ -90,38 +72,22 @@ const variant = {
   createdAt: now,
   updatedAt: now,
 }
-const templateDetail = {
-  id: "pull-template",
+const category = {
+  id: "pull",
   userId: "owner",
-  name: "Pull strength",
+  name: "Pull",
+  archivedAt: null,
   createdAt: now,
   updatedAt: now,
-  canStart: true,
-  exercises: [
-    {
-      id: "template-row",
-      position: 0,
-      setCount: 1,
-      variantId: variant.id,
-      variantName: variant.name,
-      difficultyMultiplier: 1250,
-      variantArchived: false,
-      categoryId: category.id,
-      categoryName: category.name,
-      categoryArchived: false,
-      archived: false,
-    },
-  ],
+  variants: [variant],
 }
-const summary = {
-  id: templateDetail.id,
-  name: templateDetail.name,
+const template = {
+  id: "pull-template",
+  name: "Pull strength",
   updatedAt: now,
   exerciseCount: 1,
   canStart: true,
 }
-let categoryCreated = false
-
 const workout = {
   id: "workout-1",
   userId: "owner",
@@ -156,65 +122,65 @@ const workout = {
   ],
 }
 
+function renderAt(path: string) {
+  const router = createRouter({
+    routeTree,
+    history: createMemoryHistory({ initialEntries: [path] }),
+    defaultPreload: false,
+  })
+  return render(<RouterProvider router={router} />)
+}
+
 beforeEach(() => {
   Object.values(api).forEach((mock) => mock.mockReset())
-  categoryCreated = false
-  category.variants = []
-  api.getAuthState.mockResolvedValue({ authenticated: true, userId: "owner" })
-  api.listManagedExercises.mockImplementation(async () =>
-    categoryCreated ? [category] : []
-  )
-  api.listActiveExercises.mockImplementation(async () =>
-    category.variants.length ? [category] : []
-  )
-  api.listWorkoutTemplateSummaries.mockResolvedValue([])
-  api.listWorkouts.mockResolvedValue([])
+  api.getAuthState.mockResolvedValue({ authenticated: true })
+  api.listManagedExercises.mockResolvedValue([category])
+  api.listActiveExercises.mockResolvedValue([category])
+  api.listWorkoutTemplateSummaries.mockResolvedValue([template])
+  api.listWorkouts.mockResolvedValue([workout])
+  api.readWorkout.mockResolvedValue(workout)
 })
 
-describe("route-level core UI journey", () => {
-  it("carries realistic flow data across each route boundary", async () => {
-    categoryCreated = true
-    category.variants = [variant]
-    api.listWorkoutTemplateSummaries.mockResolvedValue([summary])
-    api.listWorkouts.mockResolvedValue([workout])
-    api.readWorkout.mockResolvedValue(workout)
-
-    const renderAt = (path: string) => {
-      const router = createRouter({
-        routeTree,
-        history: createMemoryHistory({ initialEntries: [path] }),
-        defaultPreload: false,
-      })
-      return render(<RouterProvider router={router} />)
-    }
-
+describe("route rendering with mocked server-function boundaries", () => {
+  it("renders exercise-library data at /exercises", async () => {
     renderAt("/exercises")
+
     expect(
       await screen.findByRole("heading", { name: variant.name })
     ).toBeInTheDocument()
+    expect(api.listManagedExercises).toHaveBeenCalledOnce()
+  })
 
-    cleanup()
+  it("renders template summaries at /templates", async () => {
     renderAt("/templates")
-    expect(
-      await screen.findByRole("heading", { name: templateDetail.name })
-    ).toBeInTheDocument()
 
-    cleanup()
-    renderAt("/record")
     expect(
-      await screen.findByRole("heading", { name: templateDetail.name })
+      await screen.findByRole("heading", { name: template.name })
+    ).toBeInTheDocument()
+    expect(api.listWorkoutTemplateSummaries).toHaveBeenCalledOnce()
+    expect(api.listActiveExercises).toHaveBeenCalledOnce()
+  })
+
+  it("renders template and workout discovery data at /record", async () => {
+    renderAt("/record")
+
+    expect(
+      await screen.findByRole("heading", { name: template.name })
     ).toBeInTheDocument()
     expect(
       screen.getByText(new RegExp(workout.workoutDate))
     ).toBeInTheDocument()
+    expect(api.listWorkouts).toHaveBeenCalledOnce()
+  })
 
-    cleanup()
+  it("renders workout detail data at /record/$workoutId", async () => {
     renderAt(`/record/${workout.id}`)
+
     expect(
       await screen.findByRole("heading", { name: "Edit workout" })
     ).toBeInTheDocument()
     expect(screen.getByLabelText("Workout name (optional)")).toHaveValue(
-      templateDetail.name
+      workout.name
     )
     expect(
       screen.getByRole("heading", { name: variant.name })
@@ -225,5 +191,8 @@ describe("route-level core UI journey", () => {
     expect(
       screen.getByRole("button", { name: "Delete workout" })
     ).toBeInTheDocument()
+    expect(api.readWorkout).toHaveBeenCalledWith({
+      data: { id: workout.id },
+    })
   })
 })

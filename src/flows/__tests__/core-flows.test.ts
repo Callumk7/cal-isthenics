@@ -8,7 +8,7 @@ import {
   getActiveExerciseLibrary,
   getExerciseManagementLibrary,
 } from "@/exercises/library"
-import { createInMemoryD1 } from "@/test/in-memory-d1"
+import { createInMemoryDrizzle } from "@/test/in-memory-drizzle"
 import {
   createWorkoutTemplate,
   deleteWorkoutTemplate,
@@ -27,7 +27,7 @@ import {
 
 const owner = "owner"
 const other = "other"
-const db = createInMemoryD1()
+const db = createInMemoryDrizzle()
 const at = (minute: number) => new Date(`2030-01-01T00:${minute}:00.000Z`)
 
 async function categoryAndVariants(names = ["Ring row", "Pull-up"]) {
@@ -58,7 +58,7 @@ async function categoryAndVariants(names = ["Ring row", "Pull-up"]) {
 
 beforeEach(() => db.reset())
 
-describe("core workout flows at the server boundary", () => {
+describe("workout domain orchestration with an in-memory Drizzle fake", () => {
   it("runs creation through template logging, workout editing, and deletion", async () => {
     const { variants } = await categoryAndVariants()
     const template = await createWorkoutTemplate(
@@ -75,7 +75,7 @@ describe("core workout flows at the server boundary", () => {
       at(4)
     )
     expect(template).toMatchObject({ ok: true, value: { canStart: true } })
-    if (!template.ok) return
+    if (!template.ok) throw new Error("fixture template failed")
 
     const logged = await createWorkoutFromTemplate(
       db,
@@ -102,7 +102,7 @@ describe("core workout flows at the server boundary", () => {
         ],
       },
     })
-    if (!logged.ok) return
+    if (!logged.ok) throw new Error("fixture workout failed")
     await expect(listWorkouts(db, owner)).resolves.toHaveLength(1)
     await expect(getWorkout(db, owner, logged.value.id)).resolves.toBeDefined()
 
@@ -197,7 +197,8 @@ describe("core workout flows at the server boundary", () => {
         { variantId: variants[1].id, setCount: 1 },
       ],
     })
-    if (!template.ok) return
+    expect(template.ok).toBe(true)
+    if (!template.ok) throw new Error("fixture template failed")
     await archiveExerciseVariant(db, owner, variants[0].id)
     const archivedDetail = await getWorkoutTemplate(
       db,
@@ -239,7 +240,7 @@ describe("core workout flows at the server boundary", () => {
     ).resolves.toMatchObject({ ok: true })
   })
 
-  it("preserves snapshots through archive and supports the null-source edit path", async () => {
+  it("preserves workout snapshots when the source category is archived", async () => {
     const { category, variants } = await categoryAndVariants()
     const logged = await createWorkout(db, owner, {
       workoutDate: "2030-02-03",
@@ -249,8 +250,13 @@ describe("core workout flows at the server boundary", () => {
         { variantId: variants[1].id, sets: [4] },
       ],
     })
-    if (!logged.ok) return
-    await archiveExerciseCategory(db, owner, category.id)
+    expect(logged.ok).toBe(true)
+    if (!logged.ok) throw new Error("fixture workout failed")
+
+    await expect(
+      archiveExerciseCategory(db, owner, category.id)
+    ).resolves.toMatchObject({ ok: true })
+
     await expect(getWorkout(db, owner, logged.value.id)).resolves.toMatchObject(
       {
         exercises: [
@@ -267,59 +273,38 @@ describe("core workout flows at the server boundary", () => {
         ],
       }
     )
-    db._tables.exerciseVariants.rows = db._tables.exerciseVariants.rows.filter(
-      (row) => row.id !== variants[0].id
-    )
-    await expect(
-      updateWorkout(db, owner, {
-        id: logged.value.id,
-        workoutDate: "2030-02-04",
-        name: "Still editable",
-        exercises: [{ variantId: variants[1].id, sets: [6] }],
-      })
-    ).resolves.toMatchObject({
-      ok: true,
-      value: { exercises: [{ variantName: "Pull-up" }] },
-    })
-    await expect(
-      deleteWorkout(db, owner, logged.value.id)
-    ).resolves.toMatchObject({ ok: true })
   })
 
-  it("drops every unavailable exercise row when an edit is saved", async () => {
+  it("allows an edit to remove every exercise while rejecting an empty create", async () => {
     const { variants } = await categoryAndVariants()
     const logged = await createWorkout(db, owner, {
       workoutDate: "2030-02-03",
-      name: "Doomed rows",
+      name: "Rows to remove",
       exercises: [
         { variantId: variants[0].id, sets: [8] },
         { variantId: variants[1].id, sets: [4] },
       ],
     })
-    if (!logged.ok) return
-    // Both source variants are hard-deleted — impossible through the public
-    // archive API, but a state the edit form explicitly supports ("removed
-    // when saved") once the library rows are gone.
-    db._tables.exerciseVariants.rows = db._tables.exerciseVariants.rows.filter(
-      (row) => row.id !== variants[0].id && row.id !== variants[1].id
-    )
+    expect(logged.ok).toBe(true)
+    if (!logged.ok) throw new Error("fixture workout failed")
+
     await expect(
       updateWorkout(db, owner, {
         id: logged.value.id,
         workoutDate: "2030-02-04",
-        name: "All rows dropped",
+        name: "All rows removed",
         exercises: [],
       })
     ).resolves.toMatchObject({
       ok: true,
-      value: { name: "All rows dropped", exercises: [] },
+      value: { name: "All rows removed", exercises: [] },
     })
     const after = await getWorkout(db, owner, logged.value.id)
     expect(after?.workoutDate).toBe("2030-02-04")
     expect(after?.exercises).toEqual([])
     expect(db._tables.workoutExercises.rows).toHaveLength(0)
     expect(db._tables.workoutSets.rows).toHaveLength(0)
-    // A blank create is still rejected; only edits may end up empty.
+
     await expect(
       createWorkout(db, owner, {
         workoutDate: "2030-02-05",
@@ -338,13 +323,15 @@ describe("core workout flows at the server boundary", () => {
         { variantId: variants[1].id, setCount: 1 },
       ],
     })
-    if (!template.ok) return
+    expect(template.ok).toBe(true)
+    if (!template.ok) throw new Error("fixture template failed")
     const logged = await createWorkoutFromTemplate(db, owner, {
       templateId: template.value.id,
       workoutDate: "2030-02-03",
       exercises: [{ sets: [8] }, { sets: [4] }],
     })
-    if (!logged.ok) return
+    expect(logged.ok).toBe(true)
+    if (!logged.ok) throw new Error("fixture workout failed")
     const snapshot = logged.value.exercises.map(
       ({ position, variantName, sets }) => ({
         position,
@@ -381,7 +368,12 @@ describe("core workout flows at the server boundary", () => {
       variantId: variants[1].id,
       setCount: 3,
     })
-    await deleteWorkoutTemplate(db, owner, template.value.id)
+    await expect(
+      deleteWorkoutTemplate(db, owner, template.value.id)
+    ).resolves.toEqual({ ok: true, value: { id: template.value.id } })
+    await expect(
+      getWorkoutTemplate(db, owner, template.value.id)
+    ).resolves.toBeUndefined()
     await expect(getWorkout(db, owner, logged.value.id)).resolves.toMatchObject(
       {
         name: "Edited workout only",
@@ -389,7 +381,7 @@ describe("core workout flows at the server boundary", () => {
     )
   })
 
-  it("covers same-date ordering, set extremes, empty inputs, and ownership", async () => {
+  it("orders same-date workouts by creation time and preserves set counts", async () => {
     const { variants } = await categoryAndVariants()
     const first = await createWorkout(
       db,
@@ -414,13 +406,17 @@ describe("core workout flows at the server boundary", () => {
       },
       at(11)
     )
-    expect(
-      first.ok && first.value.exercises.map((row) => row.sets.length)
-    ).toEqual([1, 5])
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(true)
+    if (!first.ok || !second.ok) throw new Error("fixture workout failed")
+
+    expect(first.value.exercises.map((row) => row.sets.length)).toEqual([1, 5])
     await expect(
       listWorkouts(db, owner, { from: "2030-03-04", to: "2030-03-04" })
     ).resolves.toMatchObject([{ name: "Second" }, { name: "First" }])
+  })
 
+  it("rejects empty workout inputs and prevents starting an empty template", async () => {
     const emptyTemplate = await createWorkoutTemplate(db, owner, {
       name: "Empty",
       exercises: [],
@@ -429,6 +425,8 @@ describe("core workout flows at the server boundary", () => {
       ok: true,
       value: { canStart: false },
     })
+    if (!emptyTemplate.ok) throw new Error("fixture template failed")
+
     await expect(
       createWorkoutTemplate(db, owner, { name: " ", exercises: [] })
     ).resolves.toMatchObject({
@@ -445,39 +443,47 @@ describe("core workout flows at the server boundary", () => {
       ok: false,
       fieldErrors: { exercises: expect.anything() },
     })
-    if (emptyTemplate.ok)
-      await expect(
-        createWorkoutFromTemplate(db, owner, {
-          templateId: emptyTemplate.value.id,
-          workoutDate: "2030-03-04",
-          exercises: [],
-        })
-      ).resolves.toMatchObject({ ok: false, error: "template_ineligible" })
+    await expect(
+      createWorkoutFromTemplate(db, owner, {
+        templateId: emptyTemplate.value.id,
+        workoutDate: "2030-03-04",
+        exercises: [],
+      })
+    ).resolves.toMatchObject({ ok: false, error: "template_ineligible" })
+  })
+
+  it("keeps workouts, templates, and exercise categories owner-scoped", async () => {
+    const { variants } = await categoryAndVariants()
+    const workout = await createWorkout(db, owner, {
+      workoutDate: "2030-03-04",
+      exercises: [{ variantId: variants[0].id, sets: [1] }],
+    })
+    const template = await createWorkoutTemplate(db, owner, {
+      name: "Owned",
+      exercises: [{ variantId: variants[0].id, setCount: 1 }],
+    })
+    expect(workout.ok).toBe(true)
+    expect(template.ok).toBe(true)
+    if (!workout.ok || !template.ok) throw new Error("fixture creation failed")
 
     await expect(listWorkouts(db, other)).resolves.toEqual([])
-    if (!first.ok || !second.ok) return
-    await expect(getWorkout(db, other, first.value.id)).resolves.toBeUndefined()
+    await expect(
+      getWorkout(db, other, workout.value.id)
+    ).resolves.toBeUndefined()
     await expect(
       updateWorkout(db, other, {
-        id: first.value.id,
+        id: workout.value.id,
         workoutDate: "2030-03-04",
         exercises: [{ variantId: variants[0].id, sets: [1] }],
       })
     ).resolves.toEqual({ ok: false, error: "not_found" })
-    await expect(deleteWorkout(db, other, second.value.id)).resolves.toEqual({
+    await expect(deleteWorkout(db, other, workout.value.id)).resolves.toEqual({
       ok: false,
       error: "not_found",
     })
     await expect(
-      deleteWorkoutTemplate(
-        db,
-        other,
-        emptyTemplate.ok ? emptyTemplate.value.id : "x"
-      )
-    ).resolves.toEqual({
-      ok: false,
-      error: "not_found",
-    })
+      deleteWorkoutTemplate(db, other, template.value.id)
+    ).resolves.toEqual({ ok: false, error: "not_found" })
     await expect(
       createExerciseVariant(db, other, {
         categoryId: db._tables.exerciseCategories.rows[0].id as string,

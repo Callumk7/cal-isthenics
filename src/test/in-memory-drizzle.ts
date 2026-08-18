@@ -173,7 +173,7 @@ function statement(run: () => unknown | Promise<unknown>): Statement {
   }
 }
 
-export function createInMemoryD1() {
+export function createInMemoryDrizzle() {
   const tables = Object.fromEntries(
     Object.entries(tableDefinitions).map(([name, table]) => [
       name,
@@ -377,4 +377,4 @@ export function createInMemoryD1() {
   return db as typeof db & DrizzleD1Database<typeof schema>
 }
 
-export type InMemoryD1 = ReturnType<typeof createInMemoryD1>
+export type InMemoryDrizzle = ReturnType<typeof createInMemoryDrizzle>
