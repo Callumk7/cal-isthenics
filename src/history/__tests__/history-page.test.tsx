@@ -239,7 +239,10 @@ describe("HistoryPage", () => {
     render(
       <HistoryPage initialItems={[workout("w1")]} initialNextCursor={null} />
     )
-    expect(screen.getByRole("main")).toHaveClass("max-w-3xl", "w-full")
+    expect(screen.getByTestId("history-page")).toHaveClass(
+      "max-w-3xl",
+      "w-full"
+    )
     expect(screen.getByText("Push day")).toHaveClass("break-words")
   })
 

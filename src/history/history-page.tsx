@@ -86,7 +86,10 @@ export function HistoryPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-3xl p-4 md:p-8">
+    <div
+      data-testid="history-page"
+      className="mx-auto w-full max-w-3xl p-4 md:p-8"
+    >
       <h1 className="text-2xl font-semibold">History</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Review your completed workouts and runs.
@@ -200,6 +203,6 @@ export function HistoryPage({
           ) : null}
         </div>
       )}
-    </main>
+    </div>
   )
 }
