@@ -108,7 +108,11 @@ function hasErrors(errors: Errors) {
   return Object.values(errors).some(Boolean)
 }
 
-export function RunRecorder() {
+export function RunRecorder({
+  onCreated,
+}: {
+  onCreated?: () => void | Promise<void>
+}) {
   const [form, setForm] = useState<FormState>(() => initialForm())
   const [errors, setErrors] = useState<Errors>({})
   const [saving, setSaving] = useState(false)
@@ -175,6 +179,7 @@ export function RunRecorder() {
         },
       })
       if (result.ok) {
+        await onCreated?.()
         setSaved(result.value)
         setSavedIds((current) => [...current, result.value.id])
         return
