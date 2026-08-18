@@ -10,7 +10,6 @@ import {
 } from "lucide-react"
 
 import {
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -96,6 +95,7 @@ export function TemplateManager({
   const [announcement, setAnnouncement] = useState("")
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState("")
+  const [deleting, setDeleting] = useState(false)
   const hasLibrary = initialLibrary.some(
     (category) =>
       category.archivedAt === null &&
@@ -131,6 +131,7 @@ export function TemplateManager({
 
   async function removeTemplate() {
     if (!deleteTarget) return
+    setDeleting(true)
     setDeleteError("")
     try {
       const result = await deleteWorkoutTemplate({
@@ -147,6 +148,8 @@ export function TemplateManager({
       setDeleteTarget(null)
     } catch {
       setDeleteError("We couldn’t delete this template. Please try again.")
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -303,9 +306,13 @@ export function TemplateManager({
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onPress={removeTemplate}>
-              Delete
-            </AlertDialogAction>
+            <Button
+              variant="destructive"
+              isDisabled={deleting}
+              onPress={removeTemplate}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       )}

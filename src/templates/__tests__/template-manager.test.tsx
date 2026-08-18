@@ -501,7 +501,66 @@ describe("TemplateManager", () => {
         screen.queryByRole("heading", { name: "Push day" })
       ).not.toBeInTheDocument()
     )
-    expect(screen.getByRole("status")).toHaveTextContent("Push day deleted.")
+    expect(screen.getByRole("status", { hidden: true })).toHaveTextContent(
+      "Push day deleted."
+    )
+  })
+
+  it("keeps the delete dialog open and shows an error when deletion fails, then retries", async () => {
+    api.deleteWorkoutTemplate.mockResolvedValue({ ok: false })
+    render(
+      <TemplateManager
+        initialTemplates={[summary]}
+        initialLibrary={[category]}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Delete Push day" }))
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+
+    expect(
+      await screen.findByText(
+        "We couldn’t delete this template. Please try again."
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument()
+    expect(
+      screen.getByRole("heading", { name: "Push day", hidden: true })
+    ).toBeInTheDocument()
+
+    api.deleteWorkoutTemplate.mockResolvedValue({
+      ok: true,
+      value: { id: "template-1" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    )
+    expect(
+      screen.queryByRole("heading", { name: "Push day", hidden: true })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole("status", { hidden: true })).toHaveTextContent(
+      "Push day deleted."
+    )
+  })
+
+  it("keeps the delete dialog open and shows an error when deletion rejects", async () => {
+    api.deleteWorkoutTemplate.mockRejectedValue(new Error("offline"))
+    render(
+      <TemplateManager
+        initialTemplates={[summary]}
+        initialLibrary={[category]}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Delete Push day" }))
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+
+    expect(
+      await screen.findByText(
+        "We couldn’t delete this template. Please try again."
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument()
   })
 
   it("shows a save-error banner and keeps the editor open when saving fails", async () => {
