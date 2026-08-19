@@ -13,11 +13,16 @@ describe("ActivityHeatmap", () => {
     render(<ActivityHeatmap days={days} />)
     expect(screen.getByRole("grid", { name: /365-day/ })).toBeInTheDocument()
     expect(screen.getAllByRole("gridcell")).toHaveLength(365)
-    expect(
-      screen.getByRole("gridcell", {
-        name: /January 1, 2026.*level 0 of 4.*0 runs/,
-      })
-    ).toHaveTextContent("0")
+    const firstCell = screen.getByRole("gridcell", {
+      name: /January 1, 2026.*level 0 of 4.*0 runs/,
+    })
+    expect(firstCell).toHaveTextContent("0")
+    expect(firstCell.tagName).toBe("SPAN")
+    expect(firstCell).not.toHaveAttribute("tabindex")
+    expect(firstCell).toHaveAttribute(
+      "title",
+      firstCell.getAttribute("aria-label")
+    )
     expect(
       screen.getByLabelText("Relative activity intensity legend")
     ).toHaveTextContent("Less activity")
@@ -25,5 +30,16 @@ describe("ActivityHeatmap", () => {
       "overflow-x-auto",
       "max-w-full"
     )
+  })
+
+  it("aligns month labels to the heatmap's 1.125rem column pitch", () => {
+    const days = buildActivityHeatmap([], [], {
+      from: "2026-01-01",
+      to: "2026-12-31",
+    })
+    render(<ActivityHeatmap days={days} />)
+
+    // January 1 is Thursday, so February 1 begins in the sixth grid column.
+    expect(screen.getByText("Feb")).toHaveStyle({ left: "5.625rem" })
   })
 })

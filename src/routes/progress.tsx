@@ -19,7 +19,7 @@ export const Route = createFileRoute("/progress")({
       listCalisthenicsIntensity({ data: range }),
       listRunningTrends({ data: range }),
     ])
-    return { calisthenics, running }
+    return { range, calisthenics, running }
   },
   pendingComponent: () => (
     <main className="mx-auto max-w-5xl p-4 md:p-8" role="status">
@@ -34,16 +34,12 @@ export const Route = createFileRoute("/progress")({
   component: ProgressPage,
 })
 function ProgressPage() {
-  const { calisthenics, running } = Route.useLoaderData()
-  const heatmapDays = buildActivityHeatmap(
-    calisthenics,
-    running,
-    trailing365DayRange(localCalendarToday())
-  )
+  const { range, calisthenics, running } = Route.useLoaderData()
+  const heatmapDays = buildActivityHeatmap(calisthenics, running, range)
   return (
     <main className="mx-auto max-w-5xl space-y-8 p-4 md:p-8">
       <div>
-        <p className="text-sm font-medium text-primary">Trailing 12 months</p>
+        <p className="text-sm font-medium text-primary">Trailing 365 days</p>
         <h1 className="text-3xl font-bold tracking-tight">Progress</h1>
       </div>
       <ActivityHeatmap days={heatmapDays} />

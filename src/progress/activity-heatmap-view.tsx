@@ -48,7 +48,7 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
         className="max-w-full overflow-x-auto rounded-xl border bg-card p-4"
         data-testid="heatmap-scroll-region"
       >
-        <div className="min-w-[53rem]">
+        <div className="min-w-[60rem]">
           <div
             className="relative ml-10 h-6 text-xs text-muted-foreground"
             aria-hidden="true"
@@ -57,7 +57,7 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
               <span
                 key={day.date}
                 className="absolute"
-                style={{ left: `${column}rem` }}
+                style={{ left: `${column * 1.125}rem` }}
               >
                 {new Intl.DateTimeFormat(undefined, {
                   month: "short",
@@ -86,16 +86,15 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
                 <span key={`blank-${index}`} aria-hidden="true" />
               ))}
               {days.map((day) => (
-                <button
+                <span
                   key={day.date}
-                  type="button"
                   role="gridcell"
                   aria-label={summary(day)}
                   title={summary(day)}
-                  className={`size-3.5 rounded-[3px] text-[8px] leading-none font-bold focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${levelStyles[day.level]}`}
+                  className={`size-3.5 rounded-[3px] text-[8px] leading-none font-bold ${levelStyles[day.level]}`}
                 >
                   {day.level}
-                </button>
+                </span>
               ))}
             </div>
           </div>
