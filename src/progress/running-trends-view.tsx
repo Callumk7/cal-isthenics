@@ -101,7 +101,7 @@ export function RunningTrends({ days }: { days: RunningTrendDay[] }) {
           Daily distance (km)
         </h3>
         <TrendChart
-          days={days}
+          days={activeDays}
           metric="distanceKm"
           label="Distance (km)"
           color="var(--chart-1)"
@@ -116,7 +116,7 @@ export function RunningTrends({ days }: { days: RunningTrendDay[] }) {
           score
         </h3>
         <TrendChart
-          days={days}
+          days={activeDays}
           metric="relativeIntensity"
           label="Relative trend score"
           color="var(--chart-2)"
