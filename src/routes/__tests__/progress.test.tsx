@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { describe, expect, it, vi } from "vitest"
 
-import { trailingTwelveMonthRange } from "@/progress/calisthenics-intensity"
+import { trailing365DayRange } from "@/progress/activity-heatmap"
+import { localCalendarToday } from "@/lib/date"
 import { Route } from "../progress"
 
 const mocks = vi.hoisted(() => ({
@@ -22,10 +23,10 @@ describe("progress route", () => {
     const loader = Route.options.loader as () => Promise<unknown>
     await expect(loader()).resolves.toEqual({ calisthenics: [], running: [] })
     expect(mocks.listCalisthenicsIntensity).toHaveBeenCalledWith({
-      data: trailingTwelveMonthRange(),
+      data: trailing365DayRange(localCalendarToday()),
     })
     expect(mocks.listRunningTrends).toHaveBeenCalledWith({
-      data: trailingTwelveMonthRange(),
+      data: trailing365DayRange(localCalendarToday()),
     })
   })
 
