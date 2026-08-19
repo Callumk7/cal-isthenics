@@ -142,7 +142,7 @@ export function RunningTrends({ days }: { days: RunningTrendDay[] }) {
             </tr>
           </thead>
           <tbody>
-            {days.map((day) => (
+            {activeDays.map((day) => (
               <tr key={day.workoutDate} className="border-b last:border-0">
                 <td className="px-4 py-3">
                   <time dateTime={day.workoutDate}>{day.workoutDate}</time>

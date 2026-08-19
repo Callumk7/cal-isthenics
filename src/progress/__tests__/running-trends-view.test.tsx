@@ -39,7 +39,8 @@ describe("RunningTrends", () => {
     expect(rows[1]).toHaveTextContent("5.00")
     expect(rows[1]).toHaveTextContent("00:30:00")
     expect(rows[1]).toHaveTextContent("50.00")
-    expect(rows[2]).toHaveTextContent("0 runs")
+    expect(rows).toHaveLength(2)
+    expect(screen.queryByText("0 runs")).not.toBeInTheDocument()
   })
 
   it("renders an empty state when the range contains no runs", () => {
