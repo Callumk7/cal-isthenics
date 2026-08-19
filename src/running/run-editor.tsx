@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from "react"
 
 import {
-  AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -307,33 +306,31 @@ export function RunEditor({
           Delete run
         </Button>
       </div>
-      <AlertDialog isOpen={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent isDismissable={!deleting}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete run?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently deletes the {run.workoutDate} run (
-              {run.distanceMetres / 1000} km) and its contribution to your
-              history and progress.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteError && (
-            <p role="alert" className="text-sm text-destructive">
-              {deleteError}
-            </p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={deleting}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              isDisabled={deleting}
-              onPress={remove}
-            >
-              {deleting ? "Deleting…" : "Delete run"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AlertDialogContent
+        isOpen={confirming}
+        onOpenChange={setConfirming}
+        isDismissable={!deleting}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete run?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently deletes the {run.workoutDate} run (
+            {run.distanceMetres / 1000} km) and its contribution to your history
+            and progress.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {deleteError && (
+          <p role="alert" className="text-sm text-destructive">
+            {deleteError}
+          </p>
+        )}
+        <AlertDialogFooter>
+          <AlertDialogCancel isDisabled={deleting}>Cancel</AlertDialogCancel>
+          <Button variant="destructive" isDisabled={deleting} onPress={remove}>
+            {deleting ? "Deleting…" : "Delete run"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
     </main>
   )
 }

@@ -394,12 +394,10 @@ describe("WorkoutDeleteDialog", () => {
     expect(screen.queryByText("Delete workout?")).toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: /delete workout/i }))
-    expect(screen.getByText("Delete workout?")).toBeInTheDocument()
-    // React Aria wraps modal content in an aria-hidden subtree; the dialog
-    // buttons are only reachable through hidden: true role queries.
-    fireEvent.click(
-      screen.getByRole("button", { name: /cancel/i, hidden: true })
+    expect(screen.getByRole("alertdialog")).toHaveAccessibleName(
+      "Delete workout?"
     )
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
     expect(workouts.deleteWorkout).not.toHaveBeenCalled()
     expect(onDeleted).not.toHaveBeenCalled()
     expect(screen.queryByText("Delete workout?")).toBeNull()
@@ -407,7 +405,6 @@ describe("WorkoutDeleteDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /delete workout/i }))
     const confirmButtons = screen.getAllByRole("button", {
       name: /delete workout/i,
-      hidden: true,
     })
     fireEvent.click(confirmButtons[confirmButtons.length - 1])
     await waitFor(() => expect(workouts.deleteWorkout).toHaveBeenCalledOnce())
@@ -424,13 +421,10 @@ describe("WorkoutDeleteDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: /delete workout/i }))
     const confirmButtons = screen.getAllByRole("button", {
       name: /delete workout/i,
-      hidden: true,
     })
     fireEvent.click(confirmButtons[confirmButtons.length - 1])
     await waitFor(() =>
-      expect(screen.getByRole("alert", { hidden: true })).toHaveTextContent(
-        "couldn’t delete"
-      )
+      expect(screen.getByRole("alert")).toHaveTextContent("couldn’t delete")
     )
     expect(onDeleted).not.toHaveBeenCalled()
     // The dialog (and therefore the record's edit page) stays open.

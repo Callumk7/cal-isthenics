@@ -26,13 +26,7 @@ type RunningTrendRow = Pick<
     >
   >
 
-function nextDate(date: string) {
-  const value = new Date(`${date}T00:00:00.000Z`)
-  value.setUTCDate(value.getUTCDate() + 1)
-  return value.toISOString().slice(0, 10)
-}
-
-/** Builds exact chronological calendar-day points, including empty days. */
+/** Aggregates runs into chronological activity-day points. */
 export function aggregateRunningTrends(
   rows: RunningTrendRow[],
   range: { from: string; to: string }
@@ -65,18 +59,9 @@ export function aggregateRunningTrends(
     totals.set(row.workoutDate, day)
   }
 
-  const days: RunningTrendDay[] = []
-  for (let date = range.from; date <= range.to; date = nextDate(date))
-    days.push(
-      totals.get(date) ?? {
-        workoutDate: date,
-        distanceKm: 0,
-        durationSeconds: 0,
-        relativeIntensity: 0,
-        runCount: 0,
-      }
-    )
-  return days
+  return [...totals.values()].sort((a, b) =>
+    a.workoutDate.localeCompare(b.workoutDate)
+  )
 }
 
 export async function listRunningTrends(

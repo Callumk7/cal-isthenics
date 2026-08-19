@@ -8,7 +8,6 @@ import {
 } from "lucide-react"
 
 import {
-  AlertDialog,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -563,31 +562,29 @@ export function WorkoutDeleteDialog({
       >
         Delete workout
       </Button>
-      <AlertDialog isOpen={open} onOpenChange={setOpen}>
-        <AlertDialogContent isDismissable={!deleting}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete workout?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This permanently deletes this workout and its sets.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteError && (
-            <p role="alert" className="text-sm text-destructive">
-              {deleteError}
-            </p>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={deleting}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              isDisabled={deleting}
-              onPress={remove}
-            >
-              {deleting ? "Deleting…" : "Delete workout"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AlertDialogContent
+        isOpen={open}
+        onOpenChange={setOpen}
+        isDismissable={!deleting}
+      >
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete workout?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently deletes this workout and its sets.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {deleteError && (
+          <p role="alert" className="text-sm text-destructive">
+            {deleteError}
+          </p>
+        )}
+        <AlertDialogFooter>
+          <AlertDialogCancel isDisabled={deleting}>Cancel</AlertDialogCancel>
+          <Button variant="destructive" isDisabled={deleting} onPress={remove}>
+            {deleting ? "Deleting…" : "Delete workout"}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
     </>
   )
 }

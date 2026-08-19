@@ -4,7 +4,7 @@ import { createInMemoryDrizzle } from "@/test/in-memory-drizzle"
 import { aggregateRunningTrends, listRunningTrends } from "../running-trends"
 
 describe("running trends", () => {
-  it("aggregates same-date runs, preserves precision, and fills boundaries and gaps", () => {
+  it("aggregates same-date runs, preserves precision, and omits inactive days", () => {
     const days = aggregateRunningTrends(
       [
         {
@@ -29,7 +29,6 @@ describe("running trends", () => {
 
     expect(days.map((day) => day.workoutDate)).toEqual([
       "2026-08-01",
-      "2026-08-02",
       "2026-08-03",
     ])
     expect(days[0]).toMatchObject({
@@ -41,12 +40,7 @@ describe("running trends", () => {
       50 + (1.234 * 1.234 * 3600) / 601,
       12
     )
-    expect(days[1]).toMatchObject({
-      distanceKm: 0,
-      relativeIntensity: 0,
-      runCount: 0,
-    })
-    expect(days[2].relativeIntensity).toBe(25)
+    expect(days[1].relativeIntensity).toBe(25)
   })
 
   it("is independent of manual speed and calories", () => {
