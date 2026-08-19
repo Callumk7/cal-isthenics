@@ -105,6 +105,57 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
           </div>
         </div>
       </div>
+      <details className="rounded-xl border bg-card p-3">
+        <summary className="cursor-pointer text-sm font-medium">
+          View daily activity data as a table
+        </summary>
+        <div
+          role="region"
+          aria-label="Daily activity data table"
+          tabIndex={0}
+          className="mt-3 overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <table className="w-full min-w-[42rem] text-left text-sm">
+            <caption className="sr-only">
+              Daily relative activity intensity, calisthenics workouts, and runs
+            </caption>
+            <thead className="border-b bg-muted/40">
+              <tr>
+                <th className="px-3 py-2 font-medium">Date</th>
+                <th className="px-3 py-2 text-right font-medium">Level</th>
+                <th className="px-3 py-2 text-right font-medium">
+                  Calisthenics workouts
+                </th>
+                <th className="px-3 py-2 text-right font-medium">Runs</th>
+                <th className="px-3 py-2 text-right font-medium">
+                  Running distance (km)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {days.map((day) => (
+                <tr key={day.date} className="border-b last:border-0">
+                  <td className="px-3 py-2">
+                    <time dateTime={day.date}>{day.date}</time>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {day.level} of 4
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {day.workoutCount}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {day.runCount}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {day.runningDistanceKm.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
       <div
         className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
         aria-label="Relative activity intensity legend"

@@ -195,6 +195,11 @@ const relations: Partial<
       local: "id",
       foreign: "workoutExerciseId",
     },
+    sourceVariant: {
+      target: "exerciseVariants",
+      local: "sourceVariantId",
+      foreign: "id",
+    },
   },
 }
 
@@ -250,7 +255,10 @@ export function createInMemoryDrizzle() {
           (candidate) => candidate[relation.foreign] === source[relation.local]
         )
         const joined = select(relation.target, nestedOptions, candidates)
-        const isOne = relationName === "category" || relationName === "variant"
+        const isOne =
+          relationName === "category" ||
+          relationName === "variant" ||
+          relationName === "sourceVariant"
         row[relationName] = isOne ? joined[0] : joined
       }
       return row

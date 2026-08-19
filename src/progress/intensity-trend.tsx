@@ -87,7 +87,12 @@ export function IntensityTrend({ days }: { days: CalisthenicsIntensityDay[] }) {
           </LineChart>
         </ChartContainer>
       </div>
-      <div className="overflow-x-auto rounded-xl border">
+      <div
+        role="region"
+        aria-label="Scrollable daily calisthenics intensity data"
+        tabIndex={0}
+        className="overflow-x-auto rounded-xl border focus-visible:outline-2 focus-visible:outline-ring"
+      >
         <table className="w-full text-left text-sm">
           <caption className="sr-only">
             Calisthenics intensity daily values in chronological order

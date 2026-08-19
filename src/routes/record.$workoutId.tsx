@@ -1,4 +1,9 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  redirect,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router"
 import { useState } from "react"
 
 import { listActiveExercises } from "@/exercises/server-functions"
@@ -35,11 +40,16 @@ export const Route = createFileRoute("/record/$workoutId")({
 function WorkoutPage() {
   const { workout, library } = Route.useLoaderData()
   const navigate = useNavigate()
+  const router = useRouter()
   const [savedId, setSavedId] = useState<string | null>(null)
+  async function returnToRecord() {
+    // Keep history and progress loader data coherent after a calisthenics
+    // mutation, matching the running-workout edit flow.
+    await router.invalidate()
+    await navigate({ to: "/record" })
+  }
   if (savedId)
-    return (
-      <Success id={savedId} onAnother={() => navigate({ to: "/record" })} />
-    )
+    return <Success id={savedId} onAnother={() => void returnToRecord()} />
   return (
     <>
       <WorkoutEditor
@@ -47,12 +57,15 @@ function WorkoutPage() {
         library={library}
         workoutId={workout.id}
         onDiscard={() => navigate({ to: "/record" })}
-        onSaved={setSavedId}
+        onSaved={(id) => {
+          void router.invalidate()
+          setSavedId(id)
+        }}
       />
       <div className="mx-auto -mt-6 w-full max-w-3xl px-4 pb-8 md:px-8">
         <WorkoutDeleteDialog
           workoutId={workout.id}
-          onDeleted={() => navigate({ to: "/record" })}
+          onDeleted={() => void returnToRecord()}
         />
       </div>
     </>

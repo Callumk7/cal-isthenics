@@ -27,6 +27,11 @@ describe("IntensityTrend", () => {
     expect(rows[2]).toHaveTextContent("2026-08-02")
     expect(rows[2]).toHaveTextContent("20")
     expect(screen.getByText(/relative training trend/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole("region", {
+        name: "Scrollable daily calisthenics intensity data",
+      })
+    ).toHaveAttribute("tabindex", "0")
   })
 
   it("renders a useful empty state", () => {

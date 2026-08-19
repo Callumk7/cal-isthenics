@@ -123,7 +123,12 @@ export function RunningTrends({ days }: { days: RunningTrendDay[] }) {
         />
       </section>
 
-      <div className="overflow-x-auto rounded-xl border">
+      <div
+        role="region"
+        aria-label="Scrollable daily running data"
+        tabIndex={0}
+        className="overflow-x-auto rounded-xl border focus-visible:outline-2 focus-visible:outline-ring"
+      >
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">
             Daily running distance, duration context, and relative trend score
