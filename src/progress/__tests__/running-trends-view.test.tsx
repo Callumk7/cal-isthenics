@@ -40,6 +40,9 @@ describe("RunningTrends", () => {
     expect(rows[1]).toHaveTextContent("00:30:00")
     expect(rows[1]).toHaveTextContent("50.00")
     expect(rows).toHaveLength(2)
+    expect(
+      screen.getByRole("region", { name: "Scrollable daily running data" })
+    ).toHaveAttribute("tabindex", "0")
     expect(screen.queryByText("0 runs")).not.toBeInTheDocument()
   })
 

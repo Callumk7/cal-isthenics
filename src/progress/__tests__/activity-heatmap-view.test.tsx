@@ -36,6 +36,22 @@ describe("ActivityHeatmap", () => {
     })
   })
 
+  it("offers a keyboard-accessible daily-data alternative to the visual grid", () => {
+    const days = buildActivityHeatmap([], [], {
+      from: "2026-01-01",
+      to: "2026-01-02",
+    })
+    render(<ActivityHeatmap days={days} />)
+
+    expect(
+      screen.getByRole("region", { name: "Daily activity data table" })
+    ).toHaveAttribute("tabindex", "0")
+    expect(
+      screen.getByText("View daily activity data as a table")
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole("row")).toHaveLength(3)
+  })
+
   it("positions month labels against the responsive grid width", () => {
     const days = buildActivityHeatmap([], [], {
       from: "2026-01-01",
