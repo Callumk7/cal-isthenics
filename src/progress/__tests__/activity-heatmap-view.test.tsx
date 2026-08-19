@@ -5,7 +5,7 @@ import { buildActivityHeatmap } from "../activity-heatmap"
 import { ActivityHeatmap } from "../activity-heatmap-view"
 
 describe("ActivityHeatmap", () => {
-  it("provides grid semantics, non-color levels, summaries, legend, and controlled overflow", () => {
+  it("provides grid semantics and summaries without rendering level numbers", () => {
     const days = buildActivityHeatmap([], [], {
       from: "2026-01-01",
       to: "2026-12-31",
@@ -16,7 +16,7 @@ describe("ActivityHeatmap", () => {
     const firstCell = screen.getByRole("gridcell", {
       name: /January 1, 2026.*level 0 of 4.*0 runs/,
     })
-    expect(firstCell).toHaveTextContent("0")
+    expect(firstCell).toBeEmptyDOMElement()
     expect(firstCell.tagName).toBe("SPAN")
     expect(firstCell).not.toHaveAttribute("tabindex")
     expect(firstCell).toHaveAttribute(
@@ -26,13 +26,17 @@ describe("ActivityHeatmap", () => {
     expect(
       screen.getByLabelText("Relative activity intensity legend")
     ).toHaveTextContent("Less activity")
-    expect(screen.getByTestId("heatmap-scroll-region")).toHaveClass(
-      "overflow-x-auto",
-      "max-w-full"
+    expect(screen.getByTestId("heatmap-region")).toHaveClass(
+      "w-full",
+      "min-w-0",
+      "overflow-hidden"
     )
+    expect(screen.getByRole("grid", { name: /365-day/ })).toHaveStyle({
+      gridTemplateColumns: "repeat(53, minmax(0, 1fr))",
+    })
   })
 
-  it("aligns month labels to the heatmap's 1.125rem column pitch", () => {
+  it("positions month labels against the responsive grid width", () => {
     const days = buildActivityHeatmap([], [], {
       from: "2026-01-01",
       to: "2026-12-31",
@@ -40,6 +44,6 @@ describe("ActivityHeatmap", () => {
     render(<ActivityHeatmap days={days} />)
 
     // January 1 is Thursday, so February 1 begins in the sixth grid column.
-    expect(screen.getByText("Feb")).toHaveStyle({ left: "5.625rem" })
+    expect(screen.getByText("Feb")).toHaveStyle({ gridColumnStart: "6" })
   })
 })

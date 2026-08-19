@@ -1,14 +1,14 @@
 import type { ActivityHeatmapDay } from "./activity-heatmap"
 
 const levelStyles = [
-  "bg-muted text-muted-foreground",
-  "bg-primary/20 text-foreground",
-  "bg-primary/40 text-foreground",
-  "bg-primary/70 text-primary-foreground",
-  "bg-primary text-primary-foreground",
+  "bg-muted",
+  "bg-primary/20",
+  "bg-primary/40",
+  "bg-primary/70",
+  "bg-primary",
 ]
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "long",
   timeZone: "UTC",
 })
@@ -22,6 +22,7 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
   const startWeekday = days[0]
     ? new Date(`${days[0].date}T00:00:00Z`).getUTCDay()
     : 0
+  const weekCount = Math.max(1, Math.ceil((days.length + startWeekday) / 7))
   const monthLabels = days
     .map((day, index) => ({
       day,
@@ -34,7 +35,10 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
     )
 
   return (
-    <section aria-labelledby="activity-heatmap-title" className="space-y-4">
+    <section
+      aria-labelledby="activity-heatmap-title"
+      className="min-w-0 space-y-4"
+    >
       <div>
         <h2 id="activity-heatmap-title" className="text-xl font-semibold">
           Daily activity
@@ -45,58 +49,59 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
         </p>
       </div>
       <div
-        className="max-w-full overflow-x-auto rounded-xl border bg-card p-4"
-        data-testid="heatmap-scroll-region"
+        className="w-full min-w-0 overflow-hidden rounded-xl border bg-card p-3 sm:p-4"
+        data-testid="heatmap-region"
       >
-        <div className="min-w-[60rem]">
+        <div className="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-2">
+          <div />
           <div
-            className="relative ml-10 h-6 text-xs text-muted-foreground"
+            className="grid h-6 gap-px text-[9px] text-muted-foreground sm:gap-1 sm:text-xs"
+            style={{
+              gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))`,
+            }}
             aria-hidden="true"
           >
             {monthLabels.map(({ day, column }) => (
-              <span
-                key={day.date}
-                className="absolute"
-                style={{ left: `${column * 1.125}rem` }}
-              >
-                {new Intl.DateTimeFormat(undefined, {
+              <span key={day.date} style={{ gridColumnStart: column + 1 }}>
+                {new Intl.DateTimeFormat("en-US", {
                   month: "short",
                   timeZone: "UTC",
                 }).format(new Date(`${day.date}T00:00:00Z`))}
               </span>
             ))}
           </div>
-          <div className="flex gap-2">
-            <div
-              className="grid w-8 grid-rows-7 gap-1 text-right text-[10px] leading-4 text-muted-foreground"
-              aria-hidden="true"
-            >
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                (weekday) => (
-                  <span key={weekday}>{weekday[0]}</span>
-                )
-              )}
-            </div>
-            <div
-              role="grid"
-              aria-label="365-day relative activity intensity"
-              className="grid grid-flow-col grid-rows-7 gap-1"
-            >
-              {Array.from({ length: startWeekday }, (_, index) => (
-                <span key={`blank-${index}`} aria-hidden="true" />
-              ))}
-              {days.map((day) => (
-                <span
-                  key={day.date}
-                  role="gridcell"
-                  aria-label={summary(day)}
-                  title={summary(day)}
-                  className={`size-3.5 rounded-[3px] text-[8px] leading-none font-bold ${levelStyles[day.level]}`}
-                >
-                  {day.level}
-                </span>
-              ))}
-            </div>
+          <div
+            className="grid grid-rows-7 items-center text-[9px] text-muted-foreground"
+            aria-hidden="true"
+          >
+            {["S", "M", "T", "W", "T", "F", "S"].map((weekday, index) => (
+              <span key={`${weekday}-${index}`}>{weekday}</span>
+            ))}
+          </div>
+          <div
+            role="grid"
+            aria-label="365-day relative activity intensity"
+            className="grid min-w-0 grid-flow-col grid-rows-7 gap-px sm:gap-1"
+            style={{
+              gridTemplateColumns: `repeat(${weekCount}, minmax(0, 1fr))`,
+            }}
+          >
+            {Array.from({ length: startWeekday }, (_, index) => (
+              <span
+                key={`blank-${index}`}
+                aria-hidden="true"
+                className="aspect-square min-w-0"
+              />
+            ))}
+            {days.map((day) => (
+              <span
+                key={day.date}
+                role="gridcell"
+                aria-label={summary(day)}
+                title={summary(day)}
+                className={`aspect-square min-w-0 rounded-[2px] sm:rounded-[3px] ${levelStyles[day.level]}`}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -108,11 +113,9 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
         {levelStyles.map((style, level) => (
           <span
             key={level}
-            className={`inline-flex size-5 items-center justify-center rounded text-[10px] font-bold ${style}`}
-          >
-            {level}
-            <span className="sr-only">Level {level}</span>
-          </span>
+            aria-label={`Level ${level}`}
+            className={`inline-block size-4 rounded ${style}`}
+          />
         ))}
         <span>More activity</span>
       </div>
