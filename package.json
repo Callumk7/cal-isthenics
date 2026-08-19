@@ -21,6 +21,7 @@
     "db:generate:check": "drizzle-kit generate && test -z \"$(git status --porcelain -- drizzle)\"",
     "db:migrate": "wrangler d1 migrations apply cal-isthenics-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply cal-isthenics-db --remote",
+    "db:seed": "node scripts/seed-local-workouts.mjs",
     "auth:provision": "node scripts/provision-user.mjs"
   },
   "dependencies": {

@@ -98,5 +98,6 @@ pnpm cf-typegen         # regenerate Cloudflare binding/runtime types
 pnpm db:generate        # generate migrations from src/db/schema.ts
 pnpm db:migrate         # apply migrations to local D1
 pnpm db:migrate:remote  # apply migrations to production D1
+pnpm db:seed            # seed local D1 with dummy workout history
 pnpm auth:provision     # create or replace the local owner account
 ```

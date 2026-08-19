@@ -75,10 +75,22 @@ Database scripts:
 pnpm db:generate        # generate a SQL migration from src/db/schema.ts
 pnpm db:migrate         # apply pending migrations to local D1
 pnpm db:migrate:remote  # apply pending migrations to production D1
+pnpm db:seed            # seed local D1 with dummy workout history
 pnpm auth:provision     # create or replace the local owner account
 ```
 
 Commit generated files in `drizzle/`. Apply migrations locally before testing and remotely before deploying code that depends on them.
+
+### Seeding local workout data
+
+After migrating and provisioning the local owner, populate the progress and history screens with dummy data:
+
+```bash
+pnpm db:migrate
+pnpm db:seed
+```
+
+The seed command is local-only. It creates 16 weeks of calisthenics workouts and runs, along with the exercise-library rows they use. Running it again replaces only records whose IDs use the script's `local-seed` prefix; it does not delete workouts recorded through the app.
 
 ### Provisioning the owner account
 
