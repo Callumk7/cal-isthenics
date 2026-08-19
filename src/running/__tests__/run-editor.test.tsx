@@ -54,10 +54,7 @@ function renderEditor(onSaved = vi.fn(), onDeleted = vi.fn()) {
 }
 
 function confirmDelete() {
-  const buttons = screen.getAllByRole("button", {
-    name: /delete run/i,
-    hidden: true,
-  })
+  const buttons = screen.getAllByRole("button", { name: /delete run/i })
   return buttons[buttons.length - 1]
 }
 
@@ -189,10 +186,8 @@ describe("RunEditor", () => {
     const user = userEvent.setup()
     const { onDeleted } = renderEditor()
     await user.click(screen.getByRole("button", { name: /^delete run$/i }))
-    expect(screen.getByText("Delete run?")).toBeInTheDocument()
-    await user.click(
-      screen.getByRole("button", { name: /cancel/i, hidden: true })
-    )
+    expect(screen.getByRole("alertdialog")).toHaveAccessibleName("Delete run?")
+    await user.click(screen.getByRole("button", { name: /cancel/i }))
     expect(mocks.deleteRunningWorkout).not.toHaveBeenCalled()
     expect(screen.queryByText("Delete run?")).toBeNull()
 
@@ -226,9 +221,9 @@ describe("RunEditor", () => {
     const { onDeleted } = renderEditor()
     await user.click(screen.getByRole("button", { name: /^delete run$/i }))
     await user.click(confirmDelete())
-    expect(
-      await screen.findByRole("alert", { hidden: true })
-    ).toHaveTextContent("couldn’t delete")
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "couldn’t delete"
+    )
     expect(onDeleted).not.toHaveBeenCalled()
   })
 })
