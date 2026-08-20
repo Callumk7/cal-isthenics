@@ -15,8 +15,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { isValidCalendarDate } from "@/lib/date"
@@ -36,22 +34,28 @@ type Errors = Partial<Record<FieldName, string>>
 type Form = {
   workoutDate: string
   distanceKm: string
-  hours: string
-  minutes: string
-  seconds: string
+  duration: string
   calories: string
   manualSpeedKmH: string
 }
 const decimal = /^\d+(?:\.\d{1,3})?$/
 const integer = /^\d+$/
+const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/
+
+function formatDuration(durationSeconds: number) {
+  const hours = Math.floor(durationSeconds / 3600)
+  const minutes = Math.floor((durationSeconds % 3600) / 60)
+  const seconds = durationSeconds % 60
+  return [hours, minutes, seconds]
+    .map((part) => String(part).padStart(2, "0"))
+    .join(":")
+}
 
 function initialForm(run: RunningWorkout): Form {
   return {
     workoutDate: run.workoutDate,
     distanceKm: String(run.distanceMetres / 1000),
-    hours: String(Math.floor(run.durationSeconds / 3600)),
-    minutes: String(Math.floor((run.durationSeconds % 3600) / 60)),
-    seconds: String(run.durationSeconds % 60),
+    duration: formatDuration(run.durationSeconds),
     calories: String(run.calories),
     manualSpeedKmH:
       run.manualSpeedMilliKmH === null
@@ -60,26 +64,16 @@ function initialForm(run: RunningWorkout): Form {
   }
 }
 
-function duration(form: Form) {
-  if (
-    ![form.hours, form.minutes, form.seconds].every((part) =>
-      integer.test(part.trim())
-    )
-  )
-    return null
-  const [hours, minutes, seconds] = [
-    form.hours,
-    form.minutes,
-    form.seconds,
-  ].map(Number)
-  if (minutes > 59 || seconds > 59) return null
-  const total = hours * 3600 + minutes * 60 + seconds
-  return Number.isSafeInteger(total) && total > 0 ? total : null
+function duration(value: string) {
+  if (!timePattern.test(value)) return null
+  const [hours, minutes, seconds = "0"] = value.split(":")
+  const total = Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)
+  return total > 0 ? total : null
 }
 
 function validate(form: Form) {
   const errors: Errors = {}
-  const seconds = duration(form)
+  const seconds = duration(form.duration)
   if (!isValidCalendarDate(form.workoutDate))
     errors.workoutDate = "Enter a valid calendar date."
   if (!decimal.test(form.distanceKm.trim()) || Number(form.distanceKm) <= 0)
@@ -87,7 +81,7 @@ function validate(form: Form) {
       "Enter a positive distance in kilometres with up to three decimal places."
   if (seconds === null)
     errors.durationSeconds =
-      "Enter a duration of at least 1 second using whole hours, minutes, and seconds."
+      "Enter a duration from 00:00:01 to 23:59:59 (HH:MM:SS)."
   if (!integer.test(form.calories.trim()) || Number(form.calories) <= 0)
     errors.calories = "Enter positive whole-number calories."
   if (
@@ -118,7 +112,7 @@ export function RunEditor({
   const [deleting, setDeleting] = useState(false)
   const deletingRef = useRef(false)
   const [deleteError, setDeleteError] = useState("")
-  const totalSeconds = duration(form)
+  const totalSeconds = duration(form.duration)
   const calculated =
     decimal.test(form.distanceKm.trim()) && totalSeconds
       ? (Number(form.distanceKm) * 3600) / totalSeconds
@@ -134,9 +128,7 @@ export function RunEditor({
 
   function change(field: keyof Form, value: string) {
     setForm((current) => ({ ...current, [field]: value }))
-    const errorField = ["hours", "minutes", "seconds"].includes(field)
-      ? "durationSeconds"
-      : field
+    const errorField = field === "duration" ? "durationSeconds" : field
     setErrors((current) => ({ ...current, [errorField]: undefined }))
     setStatus("")
   }
@@ -200,9 +192,8 @@ export function RunEditor({
     label: string,
     props: { inputMode?: "numeric" | "decimal"; type?: string } = {}
   ) => {
-    const errorField = ["hours", "minutes", "seconds"].includes(field)
-      ? "durationSeconds"
-      : (field as FieldName)
+    const errorField =
+      field === "duration" ? "durationSeconds" : (field as FieldName)
     const id = `run-${field}`
     return (
       <Field data-invalid={!!errors[errorField]}>
@@ -215,9 +206,7 @@ export function RunEditor({
           {...props}
           onChange={(event) => change(field, event.target.value)}
         />
-        {!["hours", "minutes", "seconds"].includes(field) && (
-          <FieldError>{errors[errorField]}</FieldError>
-        )}
+        {field !== "duration" && <FieldError>{errors[errorField]}</FieldError>}
       </Field>
     )
   }
@@ -237,24 +226,27 @@ export function RunEditor({
         <FieldGroup>
           {input("workoutDate", "Date", { type: "date" })}
           {input("distanceKm", "Distance (km)", { inputMode: "decimal" })}
-          <FieldSet
-            aria-describedby={
-              errors.durationSeconds ? "run-duration-error" : undefined
-            }
-          >
-            <FieldLegend>Duration</FieldLegend>
-            <div className="flex flex-wrap gap-3">
-              {input("hours", "Hours", { inputMode: "numeric" })}
-              {input("minutes", "Minutes", { inputMode: "numeric" })}
-              {input("seconds", "Seconds", { inputMode: "numeric" })}
-            </div>
+          <Field data-invalid={!!errors.durationSeconds}>
+            <FieldLabel htmlFor="run-duration">Duration</FieldLabel>
+            <Input
+              id="run-duration"
+              className="h-11 text-base md:text-sm"
+              type="time"
+              step="1"
+              value={form.duration}
+              aria-invalid={!!errors.durationSeconds}
+              aria-describedby={
+                errors.durationSeconds ? "run-duration-error" : undefined
+              }
+              onChange={(event) => change("duration", event.target.value)}
+            />
             <FieldDescription>
-              Minutes and seconds must be between 0 and 59.
+              Use 24-hour HH:MM:SS. Seconds are supported and retained.
             </FieldDescription>
             <FieldError id="run-duration-error">
               {errors.durationSeconds}
             </FieldError>
-          </FieldSet>
+          </Field>
           {input("calories", "Calories", { inputMode: "numeric" })}
           {input("manualSpeedKmH", "Manual speed (km/h) (optional)", {
             inputMode: "decimal",

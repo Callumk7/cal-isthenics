@@ -56,9 +56,9 @@ async function fillValid(user = userEvent.setup(), shouldRender = true) {
   await user.clear(screen.getByLabelText("Date"))
   await user.type(screen.getByLabelText("Date"), "2026-08-18")
   await user.type(screen.getByLabelText("Distance (km)"), "15.25")
-  await user.type(screen.getByLabelText("Hours"), "1")
-  await user.type(screen.getByLabelText("Minutes"), "30")
-  await user.type(screen.getByLabelText("Seconds"), "5")
+  fireEvent.change(screen.getByLabelText("Duration"), {
+    target: { value: "01:30:05" },
+  })
   await user.type(screen.getByLabelText("Calories"), "450")
   return user
 }
@@ -100,12 +100,15 @@ describe("RunRecorder", () => {
     ).toHaveAttribute("href", "/record/run/run-1")
   })
 
-  it("normalizes hours, minutes, and seconds into exact total seconds", async () => {
+  it("saves an exact 45-minute duration as total seconds", async () => {
     mocks.createRunningWorkout.mockResolvedValue({
       ok: true,
       value: run("run-1"),
     })
     const user = await fillValid()
+    fireEvent.change(screen.getByLabelText("Duration"), {
+      target: { value: "00:45" },
+    })
     await user.click(screen.getByRole("button", { name: /save run/i }))
     await waitFor(() =>
       expect(mocks.createRunningWorkout).toHaveBeenCalledOnce()
@@ -114,7 +117,7 @@ describe("RunRecorder", () => {
       data: {
         workoutDate: "2026-08-18",
         distanceKm: "15.25",
-        durationSeconds: 5405,
+        durationSeconds: 2700,
         calories: "450",
         manualSpeedKmH: undefined,
       },
@@ -127,9 +130,9 @@ describe("RunRecorder", () => {
     render(<RunRecorder />)
     expect(screen.getByText(/calculated average speed: –/i)).toBeInTheDocument()
     await user.type(screen.getByLabelText("Distance (km)"), "5")
-    await user.type(screen.getByLabelText("Hours"), "0")
-    await user.type(screen.getByLabelText("Minutes"), "30")
-    await user.type(screen.getByLabelText("Seconds"), "0")
+    fireEvent.change(screen.getByLabelText("Duration"), {
+      target: { value: "00:30" },
+    })
     expect(
       screen.getByText(/calculated average speed: 10\.00 km\/h/i)
     ).toBeInTheDocument()
@@ -139,9 +142,9 @@ describe("RunRecorder", () => {
     const user = userEvent.setup()
     render(<RunRecorder />)
     await user.type(screen.getByLabelText("Distance (km)"), "5")
-    await user.type(screen.getByLabelText("Hours"), "0")
-    await user.type(screen.getByLabelText("Minutes"), "30")
-    await user.type(screen.getByLabelText("Seconds"), "0")
+    fireEvent.change(screen.getByLabelText("Duration"), {
+      target: { value: "00:30" },
+    })
     const manual = screen.getByLabelText("Manual speed (km/h) (optional)")
     await user.type(manual, "12.5")
     expect(
@@ -169,9 +172,9 @@ describe("RunRecorder", () => {
     const user = userEvent.setup()
     render(<RunRecorder />)
     await user.type(screen.getByLabelText("Distance (km)"), "1.2345")
-    await user.type(screen.getByLabelText("Hours"), "0")
-    await user.type(screen.getByLabelText("Minutes"), "0")
-    await user.type(screen.getByLabelText("Seconds"), "0")
+    fireEvent.change(screen.getByLabelText("Duration"), {
+      target: { value: "00:00:00" },
+    })
     await user.type(screen.getByLabelText("Calories"), "0")
     await user.type(
       screen.getByLabelText("Manual speed (km/h) (optional)"),
@@ -184,7 +187,7 @@ describe("RunRecorder", () => {
       "aria-invalid",
       "true"
     )
-    expect(screen.getByLabelText("Hours")).toHaveAttribute(
+    expect(screen.getByLabelText("Duration")).toHaveAttribute(
       "aria-invalid",
       "true"
     )
@@ -198,9 +201,9 @@ describe("RunRecorder", () => {
       target: { value: "2026-02-30" },
     })
     await user.type(screen.getByLabelText("Distance (km)"), "10")
-    await user.type(screen.getByLabelText("Hours"), "1")
-    await user.type(screen.getByLabelText("Minutes"), "0")
-    await user.type(screen.getByLabelText("Seconds"), "0")
+    fireEvent.change(screen.getByLabelText("Duration"), {
+      target: { value: "01:00" },
+    })
     await user.type(screen.getByLabelText("Calories"), "400")
     await user.click(screen.getByRole("button", { name: /save run/i }))
     expect(mocks.createRunningWorkout).not.toHaveBeenCalled()
@@ -292,22 +295,22 @@ describe("RunRecorder", () => {
     for (const label of [
       "Date",
       "Distance (km)",
-      "Hours",
-      "Minutes",
-      "Seconds",
+      "Duration",
       "Calories",
       "Manual speed (km/h) (optional)",
     ]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument()
     }
+    expect(screen.getByLabelText("Duration")).toHaveAttribute("type", "time")
+    expect(screen.getByLabelText("Duration")).toHaveAttribute("step", "1")
     await user.tab()
     expect(screen.getByLabelText("Date")).toHaveFocus()
     await user.tab()
     expect(screen.getByLabelText("Distance (km)")).toHaveFocus()
     await user.type(screen.getByLabelText("Distance (km)"), "5")
-    await user.type(screen.getByLabelText("Hours"), "0")
-    await user.type(screen.getByLabelText("Minutes"), "30")
-    await user.type(screen.getByLabelText("Seconds"), "0")
+    fireEvent.change(screen.getByLabelText("Duration"), {
+      target: { value: "00:30" },
+    })
     await user.type(screen.getByLabelText("Calories"), "300{enter}")
     await expectSavedRunId("keyboard-run")
     expect(container.firstElementChild?.scrollWidth ?? 0).toBeLessThanOrEqual(

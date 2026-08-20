@@ -7,8 +7,6 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
-  FieldSet,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { isValidCalendarDate, localCalendarToday } from "@/lib/date"
@@ -17,6 +15,7 @@ import type { RunningWorkout } from "@/running/running-workouts"
 
 const decimalPattern = /^\d+(?:\.\d{1,3})?$/
 const wholeNumberPattern = /^\d+$/
+const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/
 
 type Errors = Partial<
   Record<
@@ -32,9 +31,7 @@ type Errors = Partial<
 type FormState = {
   workoutDate: string
   distanceKm: string
-  hours: string
-  minutes: string
-  seconds: string
+  duration: string
   calories: string
   manualSpeedKmH: string
 }
@@ -42,26 +39,15 @@ type FormState = {
 const initialForm = (): FormState => ({
   workoutDate: localCalendarToday(),
   distanceKm: "",
-  hours: "",
-  minutes: "",
-  seconds: "",
+  duration: "",
   calories: "",
   manualSpeedKmH: "",
 })
 
-function parseDuration(state: FormState) {
-  const parts = [state.hours, state.minutes, state.seconds]
-  if (
-    parts.some((part) => part.trim() === "" || !wholeNumberPattern.test(part))
-  )
-    return null
-  const hours = Number(state.hours)
-  const minutes = Number(state.minutes)
-  const seconds = Number(state.seconds)
-  if (hours < 0 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59)
-    return null
-  const total = hours * 3600 + minutes * 60 + seconds
-  return Number.isSafeInteger(total) ? total : null
+function parseDuration(value: string) {
+  if (!timePattern.test(value)) return null
+  const [hours, minutes, seconds = "0"] = value.split(":")
+  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)
 }
 
 function fieldId(field: keyof Errors) {
@@ -77,7 +63,7 @@ function validate(state: FormState) {
   const distance = state.distanceKm.trim()
   const calories = state.calories.trim()
   const manualSpeed = state.manualSpeedKmH.trim()
-  const durationSeconds = parseDuration(state)
+  const durationSeconds = parseDuration(state.duration)
 
   if (!isValidCalendarDate(state.workoutDate)) {
     errors.workoutDate = "Enter a valid calendar date."
@@ -88,7 +74,7 @@ function validate(state: FormState) {
   }
   if (durationSeconds === null || durationSeconds < 1) {
     errors.durationSeconds =
-      "Enter a duration of at least 1 second using whole hours, minutes, and seconds."
+      "Enter a duration from 00:00:01 to 23:59:59 (HH:MM:SS)."
   }
   if (!wholeNumberPattern.test(calories) || Number(calories) <= 0) {
     errors.calories = "Enter positive whole-number calories."
@@ -121,7 +107,7 @@ export function RunRecorder({
   const [saved, setSaved] = useState<RunningWorkout | null>(null)
   const [savedIds, setSavedIds] = useState<string[]>([])
 
-  const durationSeconds = parseDuration(form)
+  const durationSeconds = parseDuration(form.duration)
   const validDistance = decimalPattern.test(form.distanceKm.trim())
     ? Number(form.distanceKm)
     : null
@@ -147,10 +133,7 @@ export function RunRecorder({
     setForm((current) => ({ ...current, [field]: value }))
     setErrors((current) => {
       const next = { ...current }
-      const errorField =
-        field === "hours" || field === "minutes" || field === "seconds"
-          ? "durationSeconds"
-          : field
+      const errorField = field === "duration" ? "durationSeconds" : field
       delete next[errorField as keyof Errors]
       return next
     })
@@ -305,58 +288,29 @@ export function RunRecorder({
             </FieldError>
           </Field>
 
-          <FieldSet
-            className="gap-2"
-            aria-describedby={
-              errors.durationSeconds ? errorId("durationSeconds") : undefined
-            }
-          >
-            <FieldLegend>Duration</FieldLegend>
-            <div className="flex flex-wrap gap-3">
-              <Field className="min-w-0 flex-1 basis-24">
-                <FieldLabel htmlFor="run-hours">Hours</FieldLabel>
-                <Input
-                  id="run-hours"
-                  className="h-11 text-base md:text-sm"
-                  type="text"
-                  inputMode="numeric"
-                  value={form.hours}
-                  aria-invalid={!!errors.durationSeconds}
-                  onChange={(event) => update("hours", event.target.value)}
-                />
-              </Field>
-              <Field className="min-w-0 flex-1 basis-24">
-                <FieldLabel htmlFor="run-minutes">Minutes</FieldLabel>
-                <Input
-                  id="run-minutes"
-                  className="h-11 text-base md:text-sm"
-                  type="text"
-                  inputMode="numeric"
-                  value={form.minutes}
-                  aria-invalid={!!errors.durationSeconds}
-                  onChange={(event) => update("minutes", event.target.value)}
-                />
-              </Field>
-              <Field className="min-w-0 flex-1 basis-24">
-                <FieldLabel htmlFor="run-seconds">Seconds</FieldLabel>
-                <Input
-                  id="run-seconds"
-                  className="h-11 text-base md:text-sm"
-                  type="text"
-                  inputMode="numeric"
-                  value={form.seconds}
-                  aria-invalid={!!errors.durationSeconds}
-                  onChange={(event) => update("seconds", event.target.value)}
-                />
-              </Field>
-            </div>
+          <Field data-invalid={!!errors.durationSeconds}>
+            <FieldLabel htmlFor={fieldId("durationSeconds")}>
+              Duration
+            </FieldLabel>
+            <Input
+              id={fieldId("durationSeconds")}
+              className="h-11 text-base md:text-sm"
+              type="time"
+              step="1"
+              value={form.duration}
+              aria-invalid={!!errors.durationSeconds}
+              aria-describedby={
+                errors.durationSeconds ? errorId("durationSeconds") : undefined
+              }
+              onChange={(event) => update("duration", event.target.value)}
+            />
             <FieldDescription>
-              Minutes and seconds must be between 0 and 59.
+              Use 24-hour HH:MM:SS. Seconds are supported and retained.
             </FieldDescription>
             <FieldError id={errorId("durationSeconds")}>
               {errors.durationSeconds}
             </FieldError>
-          </FieldSet>
+          </Field>
 
           <Field data-invalid={!!errors.calories}>
             <FieldLabel htmlFor={fieldId("calories")}>Calories</FieldLabel>
