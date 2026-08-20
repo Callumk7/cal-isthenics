@@ -8,6 +8,7 @@ import type { ActivitySummary } from "@/history/activity-history"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { routeTree } from "../../routeTree.gen"
+import { Route as HistoryRoute } from "../../routes/history"
 import { HistoryPage } from "../history-page"
 
 const mocks = vi.hoisted(() => ({
@@ -108,6 +109,8 @@ describe("HistoryPage", () => {
     expect(screen.getByText("5.00 km · 30 min · 300 kcal")).toBeInTheDocument()
     expect(screen.getByText("9.84 km/h")).toBeInTheDocument()
     expect(screen.queryByText("Manual")).not.toBeInTheDocument()
+    expect(screen.getByText("Edit workout")).toBeInTheDocument()
+    expect(screen.getByText("Edit run")).toBeInTheDocument()
   })
 
   it("groups same-date activities and keeps their arrival order", () => {
@@ -246,6 +249,17 @@ describe("HistoryPage", () => {
     expect(screen.getByText("Push day")).toHaveClass("break-words")
   })
 
+  it("treats a failed initial history result as a loader error", async () => {
+    mocks.listActivityHistory.mockResolvedValue({
+      ok: false,
+      error: "validation",
+      fieldErrors: {},
+    })
+    const loader = HistoryRoute.options.loader as () => Promise<unknown>
+
+    await expect(loader()).rejects.toThrow("Unable to load history")
+  })
+
   it("mounts the history route in the real router", async () => {
     mocks.getAuthState.mockResolvedValue({
       authenticated: true,
@@ -265,5 +279,35 @@ describe("HistoryPage", () => {
     expect(
       await screen.findByRole("link", { name: /push day/i })
     ).toHaveAttribute("href", "/record/w1")
+    expect(mocks.listActivityHistory).toHaveBeenCalledWith()
+  })
+
+  it("shows the initial loader error and retries the first page", async () => {
+    mocks.getAuthState.mockResolvedValue({
+      authenticated: true,
+      userId: "user",
+    })
+    mocks.listActivityHistory
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({
+        ok: true,
+        value: { items: [workout("w1")], nextCursor: null },
+      })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ["/history"] }),
+      defaultPreload: false,
+    })
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "couldn't load your history"
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }))
+
+    expect(
+      await screen.findByRole("link", { name: /push day/i })
+    ).toHaveAttribute("href", "/record/w1")
+    expect(mocks.listActivityHistory).toHaveBeenCalledTimes(2)
   })
 })

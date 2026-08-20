@@ -138,7 +138,7 @@ export function HistoryPage({
                           </span>
                         </span>
                         <span className="shrink-0 text-muted-foreground">
-                          View
+                          Edit workout
                         </span>
                       </LinkButton>
                     ) : (
@@ -175,7 +175,7 @@ export function HistoryPage({
                           </span>
                         </span>
                         <span className="shrink-0 text-muted-foreground">
-                          Edit
+                          Edit run
                         </span>
                       </LinkButton>
                     )}
