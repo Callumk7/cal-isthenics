@@ -158,6 +158,50 @@ describe("HistoryPage", () => {
     )
   })
 
+  it("applies valid date filters and rejects reversed ranges before navigating", () => {
+    const applyFilters = vi.fn()
+    render(
+      <HistoryPage
+        initialItems={[workout("w1")]}
+        initialNextCursor={null}
+        onApplyFilters={applyFilters}
+      />
+    )
+
+    fireEvent.change(screen.getByLabelText("From"), {
+      target: { value: "2026-08-01" },
+    })
+    fireEvent.change(screen.getByLabelText("To"), {
+      target: { value: "2026-08-18" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }))
+    expect(applyFilters).toHaveBeenCalledWith({
+      from: "2026-08-01",
+      to: "2026-08-18",
+    })
+
+    fireEvent.change(screen.getByLabelText("From"), {
+      target: { value: "2026-08-19" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }))
+    expect(applyFilters).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByText("End date must not precede start date.")
+    ).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText("From"), {
+      target: { value: "2026-01-01" },
+    })
+    fireEvent.change(screen.getByLabelText(/^To/), {
+      target: { value: "2027-01-03" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }))
+    expect(applyFilters).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByText("Date range must be 366 days or fewer.")
+    ).toBeInTheDocument()
+  })
+
   it("loads more across date boundaries and deduplicates activities", async () => {
     mocks.listActivityHistory.mockResolvedValue({
       ok: true,
@@ -196,6 +240,32 @@ describe("HistoryPage", () => {
       screen.queryByRole("button", { name: "Load more" })
     ).not.toBeInTheDocument()
     expect(screen.getByText("End of history")).toBeInTheDocument()
+  })
+
+  it("prevents concurrent load-more requests", async () => {
+    let resolveHistory: (value: unknown) => void = () => undefined
+    mocks.listActivityHistory.mockReturnValue(
+      new Promise((resolve) => {
+        resolveHistory = resolve
+      })
+    )
+    render(
+      <HistoryPage initialItems={[workout("w1")]} initialNextCursor="cursor" />
+    )
+
+    const loadMore = screen.getByRole("button", { name: "Load more" })
+    fireEvent.click(loadMore)
+    fireEvent.click(loadMore)
+    expect(mocks.listActivityHistory).toHaveBeenCalledTimes(1)
+
+    resolveHistory({
+      ok: true,
+      value: { items: [run("r2")], nextCursor: null },
+    })
+    expect(await screen.findByRole("link", { name: /^run/i })).toHaveAttribute(
+      "href",
+      "/record/run/r2"
+    )
   })
 
   it("keeps prior history and allows retry after load-more failure", async () => {
@@ -255,9 +325,68 @@ describe("HistoryPage", () => {
       error: "validation",
       fieldErrors: {},
     })
-    const loader = HistoryRoute.options.loader as () => Promise<unknown>
+    const loader = HistoryRoute.options.loader as (
+      context: unknown
+    ) => Promise<unknown>
 
-    await expect(loader()).rejects.toThrow("Unable to load history")
+    await expect(loader({ location: { search: {} } })).rejects.toThrow(
+      "Unable to load history"
+    )
+  })
+
+  it("restores date filters from the URL", async () => {
+    mocks.getAuthState.mockResolvedValue({
+      authenticated: true,
+      userId: "user",
+    })
+    mocks.listActivityHistory.mockResolvedValue({
+      ok: true,
+      value: { items: [workout("w1")], nextCursor: null },
+    })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ["/history?from=2026-08-01&to=2026-08-18"],
+      }),
+      defaultPreload: false,
+    })
+    render(<RouterProvider router={router} />)
+
+    expect(
+      await screen.findByRole("link", { name: /push day/i })
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText("From")).toHaveValue("2026-08-01")
+    expect(screen.getByLabelText("To")).toHaveValue("2026-08-18")
+    expect(mocks.listActivityHistory).toHaveBeenCalledWith({
+      data: { from: "2026-08-01", to: "2026-08-18" },
+    })
+  })
+
+  it("shows invalid URL date filters without presenting misleading empty results", async () => {
+    mocks.getAuthState.mockResolvedValue({
+      authenticated: true,
+      userId: "user",
+    })
+    mocks.listActivityHistory.mockResolvedValue({
+      ok: false,
+      error: "validation",
+      fieldErrors: { from: "Enter a valid calendar date." },
+    })
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({
+        initialEntries: ["/history?from=not-a-date"],
+      }),
+      defaultPreload: false,
+    })
+    render(<RouterProvider router={router} />)
+
+    expect(
+      await screen.findByText("Enter a valid calendar date.")
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("heading", { name: /no workouts or runs yet/i })
+    ).not.toBeInTheDocument()
   })
 
   it("mounts the history route in the real router", async () => {

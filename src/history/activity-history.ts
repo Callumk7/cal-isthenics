@@ -54,7 +54,28 @@ export type ActivityHistoryPage = {
 type Cursor = { d: string; c: number; i: string }
 
 const MAX_LIST_LIMIT = 100
-const MAX_RANGE_DAYS = 366
+export const MAX_HISTORY_RANGE_DAYS = 366
+
+/** Validates the date portion of history filters for both route/UI and server use. */
+export function validateActivityHistoryDateFilters(filters: {
+  from?: unknown
+  to?: unknown
+}): Record<string, string> {
+  const fieldErrors: Record<string, string> = {}
+  if (filters.from !== undefined && !isValidCalendarDate(filters.from))
+    fieldErrors.from = "Enter a valid calendar date."
+  if (filters.to !== undefined && !isValidCalendarDate(filters.to))
+    fieldErrors.to = "Enter a valid calendar date."
+  if (!fieldErrors.from && !fieldErrors.to && filters.from && filters.to) {
+    const days =
+      (Date.parse(filters.to as string) - Date.parse(filters.from as string)) /
+      86_400_000
+    if (days < 0) fieldErrors.to = "End date must not precede start date."
+    else if (days > MAX_HISTORY_RANGE_DAYS)
+      fieldErrors.to = `Date range must be ${MAX_HISTORY_RANGE_DAYS} days or fewer.`
+  }
+  return fieldErrors
+}
 
 function decodeCursor(value: unknown): Cursor | undefined {
   if (typeof value !== "string") return undefined
@@ -160,11 +181,7 @@ export async function listActivityHistory(
   userId: string,
   filters: ActivityHistoryFilters = {}
 ): Promise<ActivityHistoryResult<ActivityHistoryPage>> {
-  const fieldErrors: Record<string, string> = {}
-  if (filters.from !== undefined && !isValidCalendarDate(filters.from))
-    fieldErrors.from = "Enter a valid calendar date."
-  if (filters.to !== undefined && !isValidCalendarDate(filters.to))
-    fieldErrors.to = "Enter a valid calendar date."
+  const fieldErrors = validateActivityHistoryDateFilters(filters)
   const limit = filters.limit ?? 20
   if (
     typeof limit !== "number" ||
@@ -173,14 +190,6 @@ export async function listActivityHistory(
     limit > MAX_LIST_LIMIT
   )
     fieldErrors.limit = `Limit must be between 1 and ${MAX_LIST_LIMIT}.`
-  if (!fieldErrors.from && !fieldErrors.to && filters.from && filters.to) {
-    const days =
-      (Date.parse(filters.to as string) - Date.parse(filters.from as string)) /
-      86_400_000
-    if (days < 0) fieldErrors.to = "End date must not precede start date."
-    else if (days > MAX_RANGE_DAYS)
-      fieldErrors.to = `Date range must be ${MAX_RANGE_DAYS} days or fewer.`
-  }
   const cursor =
     filters.cursor === undefined ? undefined : decodeCursor(filters.cursor)
   if (filters.cursor !== undefined && !cursor)
