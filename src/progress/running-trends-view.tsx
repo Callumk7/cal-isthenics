@@ -150,7 +150,17 @@ export function RunningTrends({ days }: { days: RunningTrendDay[] }) {
             {activeDays.map((day) => (
               <tr key={day.workoutDate} className="border-b last:border-0">
                 <td className="px-4 py-3">
-                  <time dateTime={day.workoutDate}>{day.workoutDate}</time>
+                  {day.runCount > 0 ? (
+                    <a
+                      href={`/history?from=${day.workoutDate}&to=${day.workoutDate}`}
+                      aria-label={`View running activity for ${day.workoutDate} in History`}
+                      className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      <time dateTime={day.workoutDate}>{day.workoutDate}</time>
+                    </a>
+                  ) : (
+                    <time dateTime={day.workoutDate}>{day.workoutDate}</time>
+                  )}
                   <div className="text-xs text-muted-foreground">
                     {day.runCount} {day.runCount === 1 ? "run" : "runs"}
                   </div>

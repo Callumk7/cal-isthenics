@@ -93,7 +93,7 @@ export function IntensityTrend({ days }: { days: CalisthenicsIntensityDay[] }) {
         tabIndex={0}
         className="overflow-x-auto rounded-xl border focus-visible:outline-2 focus-visible:outline-ring"
       >
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[30rem] text-left text-sm">
           <caption className="sr-only">
             Calisthenics intensity daily values in chronological order
           </caption>
@@ -109,7 +109,17 @@ export function IntensityTrend({ days }: { days: CalisthenicsIntensityDay[] }) {
             {days.map((day) => (
               <tr key={day.workoutDate} className="border-b last:border-0">
                 <td className="px-4 py-3">
-                  <time dateTime={day.workoutDate}>{day.workoutDate}</time>
+                  {day.workouts.length > 0 ? (
+                    <a
+                      href={`/history?from=${day.workoutDate}&to=${day.workoutDate}`}
+                      aria-label={`View calisthenics activity for ${day.workoutDate} in History`}
+                      className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      <time dateTime={day.workoutDate}>{day.workoutDate}</time>
+                    </a>
+                  ) : (
+                    <time dateTime={day.workoutDate}>{day.workoutDate}</time>
+                  )}
                   <div className="text-xs text-muted-foreground">
                     {day.workouts.length}{" "}
                     {day.workouts.length === 1 ? "workout" : "workouts"}

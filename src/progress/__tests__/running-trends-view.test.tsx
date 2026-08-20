@@ -44,6 +44,16 @@ describe("RunningTrends", () => {
       screen.getByRole("region", { name: "Scrollable daily running data" })
     ).toHaveAttribute("tabindex", "0")
     expect(screen.queryByText("0 runs")).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("link", {
+        name: "View running activity for 2026-08-01 in History",
+      })
+    ).toHaveAttribute("href", "/history?from=2026-08-01&to=2026-08-01")
+    expect(
+      screen.queryByRole("link", {
+        name: "View running activity for 2026-08-02 in History",
+      })
+    ).not.toBeInTheDocument()
   })
 
   it("renders an empty state when the range contains no runs", () => {

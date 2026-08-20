@@ -36,6 +36,30 @@ describe("ActivityHeatmap", () => {
     })
   })
 
+  it("links active cells to their exact-date History records but leaves empty cells noninteractive", () => {
+    const days = buildActivityHeatmap(
+      [
+        {
+          workoutDate: "2026-01-02",
+          scoreMilli: 100,
+          workouts: [{ id: "workout" } as never],
+        },
+      ],
+      [],
+      { from: "2026-01-01", to: "2026-01-02" }
+    )
+    render(<ActivityHeatmap days={days} />)
+
+    expect(
+      screen.getByRole("link", {
+        name: /January 2, 2026.*calisthenics.*History/i,
+      })
+    ).toHaveAttribute("href", "/history?from=2026-01-02&to=2026-01-02")
+    expect(
+      screen.getByRole("gridcell", { name: /January 1, 2026/ })
+    ).not.toContainElement(screen.queryByRole("link"))
+  })
+
   it("offers a keyboard-accessible daily-data alternative to the visual grid", () => {
     const days = buildActivityHeatmap([], [], {
       from: "2026-01-01",

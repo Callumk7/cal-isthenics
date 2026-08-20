@@ -53,8 +53,22 @@ describe("progress route", () => {
   it("uses the loader range for the heatmap and accurately labels the window", () => {
     vi.spyOn(Route, "useLoaderData").mockReturnValue({
       range: { from: "2026-01-01", to: "2026-01-02" },
-      calisthenics: [],
-      running: [],
+      calisthenics: [
+        {
+          workoutDate: "2026-01-02",
+          scoreMilli: 100,
+          workouts: [{ id: "workout" }],
+        },
+      ],
+      running: [
+        {
+          workoutDate: "2026-01-02",
+          distanceKm: 5,
+          durationSeconds: 1800,
+          relativeIntensity: 50,
+          runCount: 1,
+        },
+      ],
     })
     const Component = Route.options.component as () => ReactNode
 
@@ -65,6 +79,16 @@ describe("progress route", () => {
     expect(
       screen.getByRole("gridcell", { name: /January 1, 2026/ })
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole("link", {
+        name: "View calisthenics activity for 2026-01-02 in History",
+      })
+    ).toHaveAttribute("href", "/history?from=2026-01-02&to=2026-01-02")
+    expect(
+      screen.getByRole("link", {
+        name: "View running activity for 2026-01-02 in History",
+      })
+    ).toHaveAttribute("href", "/history?from=2026-01-02&to=2026-01-02")
   })
 
   it("provides loading and failure feedback", () => {

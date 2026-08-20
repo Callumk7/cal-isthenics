@@ -18,6 +18,14 @@ function summary(day: ActivityHeatmapDay) {
   return `${date}: relative activity intensity level ${day.level} of 4 (${Math.round(day.score * 100)}%). ${day.workoutCount} calisthenics ${day.workoutCount === 1 ? "workout" : "workouts"}, calisthenics relative value ${Math.round(day.calisthenicsRelative * 100)}%. ${day.runCount} ${day.runCount === 1 ? "run" : "runs"}, ${day.runningDistanceKm.toFixed(2)} km, running relative value ${Math.round(day.runningRelative * 100)}%.`
 }
 
+function historyHref(date: string) {
+  return `/history?from=${date}&to=${date}`
+}
+
+function hasActivity(day: ActivityHeatmapDay) {
+  return day.workoutCount > 0 || day.runCount > 0
+}
+
 export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
   const startWeekday = days[0]
     ? new Date(`${days[0].date}T00:00:00Z`).getUTCDay()
@@ -93,15 +101,29 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
                 className="aspect-square min-w-0"
               />
             ))}
-            {days.map((day) => (
-              <span
-                key={day.date}
-                role="gridcell"
-                aria-label={summary(day)}
-                title={summary(day)}
-                className={`aspect-square min-w-0 rounded-[2px] sm:rounded-[3px] ${levelStyles[day.level]}`}
-              />
-            ))}
+            {days.map((day) => {
+              const label = summary(day)
+              const active = hasActivity(day)
+              const cellClassName = `aspect-square min-w-0 rounded-[2px] sm:rounded-[3px] ${levelStyles[day.level]}`
+
+              return (
+                <span
+                  key={day.date}
+                  role="gridcell"
+                  aria-label={label}
+                  title={label}
+                  className={cellClassName}
+                >
+                  {active && (
+                    <a
+                      href={historyHref(day.date)}
+                      aria-label={`View ${label} in History`}
+                      className="block size-full rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  )}
+                </span>
+              )
+            })}
           </div>
         </div>
       </div>
