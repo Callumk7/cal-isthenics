@@ -1,3 +1,4 @@
+import { RouterLink } from "@/components/ui/router-link"
 import type { ActivityHeatmapDay } from "./activity-heatmap"
 
 const levelStyles = [
@@ -16,10 +17,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 function summary(day: ActivityHeatmapDay) {
   const date = dateFormatter.format(new Date(`${day.date}T00:00:00Z`))
   return `${date}: relative activity intensity level ${day.level} of 4 (${Math.round(day.score * 100)}%). ${day.workoutCount} calisthenics ${day.workoutCount === 1 ? "workout" : "workouts"}, calisthenics relative value ${Math.round(day.calisthenicsRelative * 100)}%. ${day.runCount} ${day.runCount === 1 ? "run" : "runs"}, ${day.runningDistanceKm.toFixed(2)} km, running relative value ${Math.round(day.runningRelative * 100)}%.`
-}
-
-function historyHref(date: string) {
-  return `/history?from=${date}&to=${date}`
 }
 
 function hasActivity(day: ActivityHeatmapDay) {
@@ -115,8 +112,9 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
                   className={cellClassName}
                 >
                   {active && (
-                    <a
-                      href={historyHref(day.date)}
+                    <RouterLink
+                      to="/history"
+                      search={{ from: day.date, to: day.date }}
                       aria-label={`View ${label} in History`}
                       className="block size-full rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />

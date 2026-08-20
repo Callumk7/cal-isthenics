@@ -1,8 +1,25 @@
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { buildActivityHeatmap } from "../activity-heatmap"
 import { ActivityHeatmap } from "../activity-heatmap-view"
+
+vi.mock("@/components/ui/router-link", () => ({
+  RouterLink: ({
+    to,
+    search,
+    children,
+    ...props
+  }: {
+    to: string
+    search?: { from?: string; to?: string }
+    children?: React.ReactNode
+  }) => (
+    <a href={`${to}?from=${search?.from}&to=${search?.to}`} {...props}>
+      {children}
+    </a>
+  ),
+}))
 
 describe("ActivityHeatmap", () => {
   it("provides grid semantics and summaries without rendering level numbers", () => {

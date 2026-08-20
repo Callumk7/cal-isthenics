@@ -6,6 +6,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
+import { RouterLink } from "@/components/ui/router-link"
 import type { RunningTrendDay } from "./running-trends"
 import { formatDuration, formatTrendValue } from "./running-trends"
 
@@ -151,13 +152,14 @@ export function RunningTrends({ days }: { days: RunningTrendDay[] }) {
               <tr key={day.workoutDate} className="border-b last:border-0">
                 <td className="px-4 py-3">
                   {day.runCount > 0 ? (
-                    <a
-                      href={`/history?from=${day.workoutDate}&to=${day.workoutDate}`}
+                    <RouterLink
+                      to="/history"
+                      search={{ from: day.workoutDate, to: day.workoutDate }}
                       aria-label={`View running activity for ${day.workoutDate} in History`}
                       className="underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                     >
                       <time dateTime={day.workoutDate}>{day.workoutDate}</time>
-                    </a>
+                    </RouterLink>
                   ) : (
                     <time dateTime={day.workoutDate}>{day.workoutDate}</time>
                   )}

@@ -1,7 +1,24 @@
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { IntensityTrend } from "../intensity-trend"
+
+vi.mock("@/components/ui/router-link", () => ({
+  RouterLink: ({
+    to,
+    search,
+    children,
+    ...props
+  }: {
+    to: string
+    search?: { from?: string; to?: string }
+    children?: React.ReactNode
+  }) => (
+    <a href={`${to}?from=${search?.from}&to=${search?.to}`} {...props}>
+      {children}
+    </a>
+  ),
+}))
 
 describe("IntensityTrend", () => {
   it("renders chronological accessible daily values matching chart data", () => {

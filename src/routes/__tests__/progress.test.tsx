@@ -20,6 +20,23 @@ vi.mock("@/progress/server-functions", () => ({
   listRunningTrends: mocks.listRunningTrends,
 }))
 
+vi.mock("@/components/ui/router-link", () => ({
+  RouterLink: ({
+    to,
+    search,
+    children,
+    ...props
+  }: {
+    to: string
+    search?: { from?: string; to?: string }
+    children?: ReactNode
+  }) => (
+    <a href={`${to}?from=${search?.from}&to=${search?.to}`} {...props}>
+      {children}
+    </a>
+  ),
+}))
+
 describe("progress route", () => {
   it("loads and returns one exact trailing 365-day range", async () => {
     mocks.listCalisthenicsIntensity.mockResolvedValue([])
