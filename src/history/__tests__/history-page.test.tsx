@@ -308,6 +308,22 @@ describe("HistoryPage", () => {
     ).toBeInTheDocument()
   })
 
+  it("shows a distinct empty state when active filters find no activities", () => {
+    render(
+      <HistoryPage
+        initialItems={[]}
+        initialNextCursor={null}
+        filters={{ from: "2026-08-01", to: "2026-08-18" }}
+      />
+    )
+    expect(
+      screen.getByRole("heading", { name: /no activities match these dates/i })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText("Try changing or clearing the date filters.")
+    ).toBeInTheDocument()
+  })
+
   it("keeps content full-width and long names wrapping", () => {
     render(
       <HistoryPage initialItems={[workout("w1")]} initialNextCursor={null} />

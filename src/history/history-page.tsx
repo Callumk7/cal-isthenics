@@ -260,9 +260,15 @@ export function HistoryPage({
       {hasFilterError && !hasSuccessfulTimeline ? null : showEmpty ? (
         <div className="mt-12 flex flex-col items-center text-center">
           <HistoryIcon className="size-10 text-muted-foreground" />
-          <h2 className="mt-4 text-lg font-medium">No workouts or runs yet</h2>
+          <h2 className="mt-4 text-lg font-medium">
+            {filters.from || filters.to
+              ? "No activities match these dates"
+              : "No workouts or runs yet"}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Completed workouts and runs will appear here.
+            {filters.from || filters.to
+              ? "Try changing or clearing the date filters."
+              : "Completed workouts and runs will appear here."}
           </p>
         </div>
       ) : hasSuccessfulTimeline ? (
