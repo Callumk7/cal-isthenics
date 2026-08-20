@@ -67,9 +67,9 @@ describe("RunEditor", () => {
     renderEditor()
     expect(screen.getByLabelText("Date")).toHaveValue("2026-08-18")
     expect(screen.getByLabelText("Distance (km)")).toHaveValue("5")
-    expect(screen.getByLabelText("Hours")).toHaveValue("1")
-    expect(screen.getByLabelText("Minutes")).toHaveValue("2")
-    expect(screen.getByLabelText("Seconds")).toHaveValue("3")
+    expect(screen.getByLabelText("Duration")).toHaveValue("01:02:03")
+    expect(screen.getByLabelText("Duration")).toHaveAttribute("type", "time")
+    expect(screen.getByLabelText("Duration")).toHaveAttribute("step", "1")
     expect(screen.getByLabelText("Calories")).toHaveValue("300")
     expect(screen.getByLabelText("Manual speed (km/h) (optional)")).toHaveValue(
       "12.5"
@@ -99,9 +99,7 @@ describe("RunEditor", () => {
     })
     for (const [label, value] of [
       ["Distance (km)", "1.2345"],
-      ["Hours", "0"],
-      ["Minutes", "0"],
-      ["Seconds", "0"],
+      ["Duration", "00:00:00"],
       ["Calories", "0"],
       ["Manual speed (km/h) (optional)", "4.1234"],
     ]) {
@@ -113,7 +111,7 @@ describe("RunEditor", () => {
     for (const label of [
       "Date",
       "Distance (km)",
-      "Hours",
+      "Duration",
       "Calories",
       "Manual speed (km/h) (optional)",
     ])
@@ -127,13 +125,13 @@ describe("RunEditor", () => {
         /positive distance in kilometres with up to three decimal/i
       )
     ).toBeInTheDocument()
-    expect(screen.getByText(/at least 1 second/i)).toBeInTheDocument()
+    expect(screen.getByText(/00:00:01 to 23:59:59/i)).toBeInTheDocument()
     expect(
       screen.getByText(/positive whole-number calories/i)
     ).toBeInTheDocument()
   })
 
-  it("submits trimmed values and sends an empty manual speed to clear it", async () => {
+  it("preserves second-precision duration on save and clears manual speed", async () => {
     const user = userEvent.setup()
     const saved = run({ manualSpeedMilliKmH: null })
     mocks.updateRunningWorkout.mockResolvedValue({ ok: true, value: saved })
