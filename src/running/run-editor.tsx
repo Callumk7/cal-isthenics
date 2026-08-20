@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { isValidCalendarDate } from "@/lib/date"
+import { formatDuration, parseDuration } from "@/lib/duration"
 import type { RunningWorkout } from "@/running/running-workouts"
 import {
   deleteRunningWorkout,
@@ -40,16 +41,6 @@ type Form = {
 }
 const decimal = /^\d+(?:\.\d{1,3})?$/
 const integer = /^\d+$/
-const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/
-
-function formatDuration(durationSeconds: number) {
-  const hours = Math.floor(durationSeconds / 3600)
-  const minutes = Math.floor((durationSeconds % 3600) / 60)
-  const seconds = durationSeconds % 60
-  return [hours, minutes, seconds]
-    .map((part) => String(part).padStart(2, "0"))
-    .join(":")
-}
 
 function initialForm(run: RunningWorkout): Form {
   return {
@@ -64,16 +55,9 @@ function initialForm(run: RunningWorkout): Form {
   }
 }
 
-function duration(value: string) {
-  if (!timePattern.test(value)) return null
-  const [hours, minutes, seconds = "0"] = value.split(":")
-  const total = Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)
-  return total > 0 ? total : null
-}
-
 function validate(form: Form) {
   const errors: Errors = {}
-  const seconds = duration(form.duration)
+  const seconds = parseDuration(form.duration)
   if (!isValidCalendarDate(form.workoutDate))
     errors.workoutDate = "Enter a valid calendar date."
   if (!decimal.test(form.distanceKm.trim()) || Number(form.distanceKm) <= 0)
@@ -112,7 +96,7 @@ export function RunEditor({
   const [deleting, setDeleting] = useState(false)
   const deletingRef = useRef(false)
   const [deleteError, setDeleteError] = useState("")
-  const totalSeconds = duration(form.duration)
+  const totalSeconds = parseDuration(form.duration)
   const calculated =
     decimal.test(form.distanceKm.trim()) && totalSeconds
       ? (Number(form.distanceKm) * 3600) / totalSeconds

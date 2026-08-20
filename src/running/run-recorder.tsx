@@ -10,12 +10,12 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { isValidCalendarDate, localCalendarToday } from "@/lib/date"
+import { parseDuration } from "@/lib/duration"
 import { createRunningWorkout } from "@/running/server-functions"
 import type { RunningWorkout } from "@/running/running-workouts"
 
 const decimalPattern = /^\d+(?:\.\d{1,3})?$/
 const wholeNumberPattern = /^\d+$/
-const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/
 
 type Errors = Partial<
   Record<
@@ -43,12 +43,6 @@ const initialForm = (): FormState => ({
   calories: "",
   manualSpeedKmH: "",
 })
-
-function parseDuration(value: string) {
-  if (!timePattern.test(value)) return null
-  const [hours, minutes, seconds = "0"] = value.split(":")
-  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)
-}
 
 function fieldId(field: keyof Errors) {
   return `run-${field}`
