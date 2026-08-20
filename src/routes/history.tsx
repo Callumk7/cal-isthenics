@@ -7,9 +7,8 @@ import { listActivityHistory } from "@/history/server-functions"
 export const Route = createFileRoute("/history")({
   loader: async () => {
     const result = await listActivityHistory()
-    return result.ok
-      ? { items: result.value.items, nextCursor: result.value.nextCursor }
-      : { items: [], nextCursor: null }
+    if (!result.ok) throw new Error("Unable to load history")
+    return { items: result.value.items, nextCursor: result.value.nextCursor }
   },
   pendingComponent: () => (
     <div className="mx-auto max-w-3xl p-4 md:p-8" role="status">
