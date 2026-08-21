@@ -342,6 +342,7 @@ describe("HistoryPage", () => {
       "w-full"
     )
     expect(screen.getByText("Push day")).toHaveClass("break-words")
+    expect(apply.parentElement).toHaveClass("flex-wrap")
     expect(screen.getByRole("link", { name: /push day/i })).toHaveClass(
       "flex-col",
       "sm:flex-row",
