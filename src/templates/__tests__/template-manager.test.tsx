@@ -1,10 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TemplateManager } from "../template-manager"
@@ -68,6 +62,11 @@ const archivedCategory = {
       archivedAt: "2026-08-01",
     },
   ],
+}
+
+async function selectExercise(name: string) {
+  fireEvent.click(screen.getByLabelText("Exercise"))
+  fireEvent.click(await screen.findByRole("option", { name }))
 }
 
 const summary = {
@@ -196,9 +195,7 @@ describe("TemplateManager", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "My Push" },
     })
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "variant-push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }))
     fireEvent.change(screen.getByLabelText("Sets"), {
       target: { value: "5" },
@@ -217,20 +214,16 @@ describe("TemplateManager", () => {
     expect(screen.getByRole("status")).toHaveTextContent("My Push saved.")
   })
 
-  it("adds the same variant twice as distinct rows and removes them independently", () => {
+  it("adds the same variant twice as distinct rows and removes them independently", async () => {
     render(
       <TemplateManager initialTemplates={[]} initialLibrary={[category]} />
     )
     fireEvent.click(
       screen.getByRole("button", { name: "Create your first template" })
     )
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "variant-push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }))
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "variant-push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }))
 
     expect(screen.getAllByLabelText("Sets")).toHaveLength(2)
@@ -268,13 +261,9 @@ describe("TemplateManager", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Push day" },
     })
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "variant-push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }))
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "variant-dips" },
-    })
+    await selectExercise("Dips")
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }))
 
     fireEvent.click(screen.getByRole("button", { name: 'Move "Push-up" down' }))
@@ -324,9 +313,7 @@ describe("TemplateManager", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "My Push" },
     })
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "variant-push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }))
 
     for (const bad of ["0", "-1", "1.5", "", "2x"]) {
@@ -446,26 +433,54 @@ describe("TemplateManager", () => {
     expect(screen.queryByText("Ineligible")).not.toBeInTheDocument()
   })
 
-  it("excludes archived variants and archived categories from the picker", () => {
+  it("renders one non-empty group per category name and excludes archived entries", async () => {
+    const emptyCategory = {
+      id: "cat-empty",
+      name: "Empty",
+      archivedAt: null,
+      variants: [],
+    }
+    const duplicateCategory = {
+      id: "cat-push-duplicate",
+      name: "Push",
+      archivedAt: null,
+      variants: [
+        {
+          id: "variant-handstand",
+          categoryId: "cat-push-duplicate",
+          name: "Handstand push-up",
+          difficultyMultiplier: 1,
+          archivedAt: null,
+        },
+      ],
+    }
     render(
       <TemplateManager
         initialTemplates={[]}
-        initialLibrary={[category, archivedCategory]}
+        initialLibrary={[
+          category,
+          emptyCategory,
+          duplicateCategory,
+          archivedCategory,
+        ]}
       />
     )
     fireEvent.click(
       screen.getByRole("button", { name: "Create your first template" })
     )
 
-    const picker = screen.getByLabelText("Exercise")
+    fireEvent.click(screen.getByLabelText("Exercise"))
     expect(
-      within(picker).getByRole("option", { name: "Push-up" })
+      await screen.findByRole("option", { name: "Push-up" })
     ).toBeInTheDocument()
+    expect(screen.getByRole("option", { name: "Dips" })).toBeInTheDocument()
     expect(
-      within(picker).getByRole("option", { name: "Dips" })
+      screen.getByRole("option", { name: "Handstand push-up" })
     ).toBeInTheDocument()
+    expect(screen.getAllByText("Push")).toHaveLength(1)
+    expect(screen.queryByText("Empty")).not.toBeInTheDocument()
     expect(
-      within(picker).queryByRole("option", { name: "Arms-only" })
+      screen.queryByRole("option", { name: "Arms-only" })
     ).not.toBeInTheDocument()
   })
 
@@ -574,9 +589,7 @@ describe("TemplateManager", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Push day" },
     })
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "variant-push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: "Add exercise" }))
     fireEvent.click(screen.getByRole("button", { name: "Save" }))
 

@@ -68,6 +68,11 @@ const library = [
   },
 ]
 
+async function selectExercise(name: string) {
+  fireEvent.click(screen.getByLabelText("Exercise"))
+  fireEvent.click(await screen.findByRole("option", { name }))
+}
+
 const now = new Date()
 function workoutWith(
   exercises: Array<{
@@ -215,9 +220,7 @@ describe("WorkoutEditor (edit mode)", () => {
     // Reorder: move Dips above Push-up.
     fireEvent.click(screen.getByRole("button", { name: /move "dips" up/i }))
     // Repeated exercise: add Push-up again as a third row.
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
     fireEvent.change(screen.getAllByLabelText(/set 1 reps/i)[2], {
       target: { value: "5" },
@@ -241,7 +244,7 @@ describe("WorkoutEditor (edit mode)", () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith("workout-1"))
   })
 
-  it("keeps archived snapshots visible while the picker excludes archived variants", () => {
+  it("keeps archived snapshots visible while the picker excludes archived variants", async () => {
     const workout = workoutWith([
       {
         sourceVariantId: "push-up",
@@ -288,9 +291,12 @@ describe("WorkoutEditor (edit mode)", () => {
     expect(repInputs[1]).not.toBeDisabled()
     expect(repInputs[2]).toBeDisabled()
     // The picker only offers active variants.
+    fireEvent.click(screen.getByLabelText("Exercise"))
+    expect(
+      await screen.findByRole("option", { name: "Push-up" })
+    ).toBeInTheDocument()
     expect(screen.queryByRole("option", { name: "Old" })).toBeNull()
     expect(screen.queryByRole("option", { name: "Hidden" })).toBeNull()
-    expect(screen.getByRole("option", { name: "Push-up" })).toBeInTheDocument()
   })
 
   it("excludes read-only null-source rows from the update payload", async () => {
