@@ -22,14 +22,14 @@ export const Route = createFileRoute("/progress")({
     return { range, calisthenics, running }
   },
   pendingComponent: () => (
-    <main className="mx-auto max-w-5xl p-4 md:p-8" role="status">
+    <div className="mx-auto max-w-5xl p-4 md:p-8" role="status">
       Loading progress trends…
-    </main>
+    </div>
   ),
   errorComponent: () => (
-    <main className="mx-auto max-w-5xl p-4 md:p-8" role="alert">
+    <div className="mx-auto max-w-5xl p-4 md:p-8" role="alert">
       We couldn't load your progress trends. Refresh the page to try again.
-    </main>
+    </div>
   ),
   component: ProgressPage,
 })
@@ -37,7 +37,7 @@ function ProgressPage() {
   const { range, calisthenics, running } = Route.useLoaderData()
   const heatmapDays = buildActivityHeatmap(calisthenics, running, range)
   return (
-    <main className="mx-auto max-w-5xl space-y-8 p-4 md:p-8">
+    <div className="mx-auto max-w-5xl space-y-8 p-4 md:p-8">
       <div>
         <p className="text-sm font-medium text-primary">Trailing 365 days</p>
         <h1 className="text-3xl font-bold tracking-tight">Progress</h1>
@@ -45,6 +45,6 @@ function ProgressPage() {
       <ActivityHeatmap days={heatmapDays} />
       <RunningTrends days={running} />
       <IntensityTrend days={calisthenics} />
-    </main>
+    </div>
   )
 }

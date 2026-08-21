@@ -92,6 +92,7 @@ describe("progress route", () => {
     render(<>{Component()}</>)
 
     expect(screen.getByText("Trailing 365 days")).toBeInTheDocument()
+    expect(screen.queryByRole("main")).not.toBeInTheDocument()
     expect(screen.getAllByRole("gridcell")).toHaveLength(2)
     expect(
       screen.getByRole("gridcell", { name: /January 1, 2026/ })
@@ -115,7 +116,9 @@ describe("progress route", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Loading progress trends"
     )
+    expect(screen.queryByRole("main")).not.toBeInTheDocument()
     rerender(<ErrorComponent />)
     expect(screen.getByRole("alert")).toHaveTextContent("couldn't load")
+    expect(screen.queryByRole("main")).not.toBeInTheDocument()
   })
 })

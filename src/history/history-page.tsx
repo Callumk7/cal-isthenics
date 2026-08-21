@@ -241,7 +241,7 @@ export function HistoryPage({
               )}
             </label>
           </div>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <Button type="submit">Apply filters</Button>
             {(from || to) && (
               <Button type="button" variant="outline" onPress={clearFilters}>
@@ -290,9 +290,9 @@ export function HistoryPage({
                         variant="outline"
                         to="/record/$workoutId"
                         params={{ workoutId: item.id } as never}
-                        className="h-auto w-full justify-between p-3"
+                        className="h-auto w-full flex-col items-start gap-2 p-3 text-left sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <span className="min-w-0 text-left">
+                        <span className="min-w-0">
                           <span className="block font-medium break-words">
                             {item.name || "Workout"}
                           </span>
@@ -302,7 +302,7 @@ export function HistoryPage({
                             {pluralize(item.repCount, "rep")}
                           </span>
                         </span>
-                        <span className="shrink-0 text-muted-foreground">
+                        <span className="text-muted-foreground sm:shrink-0">
                           Edit workout
                         </span>
                       </LinkButton>
@@ -311,9 +311,9 @@ export function HistoryPage({
                         variant="outline"
                         to="/record/run/$runId"
                         params={{ runId: item.id } as never}
-                        className="h-auto w-full justify-between p-3"
+                        className="h-auto w-full flex-col items-start gap-2 p-3 text-left sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <span className="min-w-0 text-left">
+                        <span className="min-w-0">
                           <span className="block font-medium break-words">
                             Run
                           </span>
@@ -339,7 +339,7 @@ export function HistoryPage({
                             )}
                           </span>
                         </span>
-                        <span className="shrink-0 text-muted-foreground">
+                        <span className="text-muted-foreground sm:shrink-0">
                           Edit run
                         </span>
                       </LinkButton>
