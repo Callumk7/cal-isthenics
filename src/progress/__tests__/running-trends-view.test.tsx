@@ -1,7 +1,24 @@
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { RunningTrends } from "../running-trends-view"
+
+vi.mock("@/components/ui/router-link", () => ({
+  RouterLink: ({
+    to,
+    search,
+    children,
+    ...props
+  }: {
+    to: string
+    search?: { from?: string; to?: string }
+    children?: React.ReactNode
+  }) => (
+    <a href={`${to}?from=${search?.from}&to=${search?.to}`} {...props}>
+      {children}
+    </a>
+  ),
+}))
 
 describe("RunningTrends", () => {
   it("keeps metrics separate and provides the chart values as accessible text", () => {
@@ -44,6 +61,16 @@ describe("RunningTrends", () => {
       screen.getByRole("region", { name: "Scrollable daily running data" })
     ).toHaveAttribute("tabindex", "0")
     expect(screen.queryByText("0 runs")).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("link", {
+        name: "View running activity for 2026-08-01 in History",
+      })
+    ).toHaveAttribute("href", "/history?from=2026-08-01&to=2026-08-01")
+    expect(
+      screen.queryByRole("link", {
+        name: "View running activity for 2026-08-02 in History",
+      })
+    ).not.toBeInTheDocument()
   })
 
   it("renders an empty state when the range contains no runs", () => {

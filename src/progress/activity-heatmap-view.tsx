@@ -1,3 +1,4 @@
+import { RouterLink } from "@/components/ui/router-link"
 import type { ActivityHeatmapDay } from "./activity-heatmap"
 
 const levelStyles = [
@@ -16,6 +17,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 function summary(day: ActivityHeatmapDay) {
   const date = dateFormatter.format(new Date(`${day.date}T00:00:00Z`))
   return `${date}: relative activity intensity level ${day.level} of 4 (${Math.round(day.score * 100)}%). ${day.workoutCount} calisthenics ${day.workoutCount === 1 ? "workout" : "workouts"}, calisthenics relative value ${Math.round(day.calisthenicsRelative * 100)}%. ${day.runCount} ${day.runCount === 1 ? "run" : "runs"}, ${day.runningDistanceKm.toFixed(2)} km, running relative value ${Math.round(day.runningRelative * 100)}%.`
+}
+
+function hasActivity(day: ActivityHeatmapDay) {
+  return day.workoutCount > 0 || day.runCount > 0
 }
 
 export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
@@ -93,15 +98,30 @@ export function ActivityHeatmap({ days }: { days: ActivityHeatmapDay[] }) {
                 className="aspect-square min-w-0"
               />
             ))}
-            {days.map((day) => (
-              <span
-                key={day.date}
-                role="gridcell"
-                aria-label={summary(day)}
-                title={summary(day)}
-                className={`aspect-square min-w-0 rounded-[2px] sm:rounded-[3px] ${levelStyles[day.level]}`}
-              />
-            ))}
+            {days.map((day) => {
+              const label = summary(day)
+              const active = hasActivity(day)
+              const cellClassName = `aspect-square min-w-0 rounded-[2px] sm:rounded-[3px] ${levelStyles[day.level]}`
+
+              return (
+                <span
+                  key={day.date}
+                  role="gridcell"
+                  aria-label={label}
+                  title={label}
+                  className={cellClassName}
+                >
+                  {active && (
+                    <RouterLink
+                      to="/history"
+                      search={{ from: day.date, to: day.date }}
+                      aria-label={`View ${label} in History`}
+                      className="block size-full rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  )}
+                </span>
+              )
+            })}
           </div>
         </div>
       </div>

@@ -1,8 +1,25 @@
 import { render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { buildActivityHeatmap } from "../activity-heatmap"
 import { ActivityHeatmap } from "../activity-heatmap-view"
+
+vi.mock("@/components/ui/router-link", () => ({
+  RouterLink: ({
+    to,
+    search,
+    children,
+    ...props
+  }: {
+    to: string
+    search?: { from?: string; to?: string }
+    children?: React.ReactNode
+  }) => (
+    <a href={`${to}?from=${search?.from}&to=${search?.to}`} {...props}>
+      {children}
+    </a>
+  ),
+}))
 
 describe("ActivityHeatmap", () => {
   it("provides grid semantics and summaries without rendering level numbers", () => {
@@ -34,6 +51,30 @@ describe("ActivityHeatmap", () => {
     expect(screen.getByRole("grid", { name: /365-day/ })).toHaveStyle({
       gridTemplateColumns: "repeat(53, minmax(0, 1fr))",
     })
+  })
+
+  it("links active cells to their exact-date History records but leaves empty cells noninteractive", () => {
+    const days = buildActivityHeatmap(
+      [
+        {
+          workoutDate: "2026-01-02",
+          scoreMilli: 100,
+          workouts: [{ id: "workout" } as never],
+        },
+      ],
+      [],
+      { from: "2026-01-01", to: "2026-01-02" }
+    )
+    render(<ActivityHeatmap days={days} />)
+
+    expect(
+      screen.getByRole("link", {
+        name: /January 2, 2026.*calisthenics.*History/i,
+      })
+    ).toHaveAttribute("href", "/history?from=2026-01-02&to=2026-01-02")
+    expect(
+      screen.getByRole("gridcell", { name: /January 1, 2026/ })
+    ).not.toContainElement(screen.queryByRole("link"))
   })
 
   it("offers a keyboard-accessible daily-data alternative to the visual grid", () => {
