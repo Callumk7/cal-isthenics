@@ -4,6 +4,7 @@ import {
   createRouter,
 } from "@tanstack/react-router"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import type { ActivitySummary } from "@/history/activity-history"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -324,15 +325,41 @@ describe("HistoryPage", () => {
     ).toBeInTheDocument()
   })
 
-  it("keeps content full-width and long names wrapping", () => {
+  it("keeps controls and result actions reachable on a 320px layout", async () => {
+    const user = userEvent.setup()
     render(
-      <HistoryPage initialItems={[workout("w1")]} initialNextCursor={null} />
+      <HistoryPage
+        initialItems={[workout("w1"), run("r1")]}
+        initialNextCursor={null}
+      />
     )
+
+    const from = screen.getByLabelText("From")
+    const to = screen.getByLabelText("To")
+    const apply = screen.getByRole("button", { name: "Apply filters" })
     expect(screen.getByTestId("history-page")).toHaveClass(
       "max-w-3xl",
       "w-full"
     )
     expect(screen.getByText("Push day")).toHaveClass("break-words")
+    expect(apply.parentElement).toHaveClass("flex-wrap")
+    expect(screen.getByRole("link", { name: /push day/i })).toHaveClass(
+      "flex-col",
+      "sm:flex-row",
+      "items-start"
+    )
+    expect(screen.getByRole("link", { name: /^run/i })).toHaveClass(
+      "flex-col",
+      "sm:flex-row",
+      "items-start"
+    )
+
+    await user.tab()
+    expect(from).toHaveFocus()
+    await user.tab()
+    expect(to).toHaveFocus()
+    await user.tab()
+    expect(apply).toHaveFocus()
   })
 
   it("treats a failed initial history result as a loader error", async () => {
@@ -425,6 +452,7 @@ describe("HistoryPage", () => {
       await screen.findByRole("link", { name: /push day/i })
     ).toHaveAttribute("href", "/record/w1")
     expect(mocks.listActivityHistory).toHaveBeenCalledWith()
+    expect(document.querySelectorAll("main")).toHaveLength(1)
   })
 
   it("shows the initial loader error and retries the first page", async () => {
