@@ -8,6 +8,8 @@ const workouts = vi.hoisted(() => ({
   createWorkout: vi.fn(),
   createWorkoutFromTemplate: vi.fn(),
   listWorkouts: vi.fn(),
+  prepareRepeatWorkout: vi.fn(),
+  readPreviousPerformanceCues: vi.fn(),
 }))
 vi.mock("@/templates/server-functions", () => templates)
 vi.mock("@/workouts/server-functions", () => workouts)
@@ -142,6 +144,87 @@ describe("RecordManager", () => {
     expect(
       screen.getAllByText("Enter a positive whole number of reps.")
     ).toHaveLength(2)
+  })
+
+  it("repeats a recent workout into an independent cleared draft with source cues", async () => {
+    workouts.prepareRepeatWorkout.mockResolvedValue({
+      ok: true,
+      value: {
+        workoutDate: "2026-08-20",
+        name: "Push day",
+        exercises: [
+          {
+            activeVariant: {
+              id: "push-up",
+              name: "Push-up",
+              categoryName: "Push",
+            },
+            notes: "old note",
+            sets: [{ reps: 8 }, { reps: 6 }],
+          },
+        ],
+      },
+    })
+    render(
+      <RecordManager
+        initialTemplates={[]}
+        initialLibrary={library}
+        initialWorkouts={[
+          {
+            id: "source",
+            workoutDate: "2026-08-20",
+            name: "Push day",
+            exercises: [{ id: "e" }],
+          },
+        ]}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Repeat workout" }))
+    await waitFor(() =>
+      expect(workouts.prepareRepeatWorkout).toHaveBeenCalledWith({
+        data: { id: "source" },
+      })
+    )
+    expect(screen.getByLabelText("Workout name (optional)")).toHaveValue(
+      "Push day"
+    )
+    expect(screen.getByLabelText("General notes (optional)")).toHaveValue("")
+    expect(screen.getByLabelText("Exercise notes (optional)")).toHaveValue("")
+    expect(
+      screen
+        .getAllByLabelText(/set \d+ reps/i)
+        .map((input) => (input as HTMLInputElement).value)
+    ).toEqual(["", ""])
+    expect(screen.getByText(/last on 20 aug: 8 \/ 6/i)).toBeInTheDocument()
+  })
+
+  it("blocks unavailable repeat sources and links to exercise management", async () => {
+    workouts.prepareRepeatWorkout.mockResolvedValue({
+      ok: false,
+      error: "repeat_unavailable",
+      unavailable: [{ variantName: "Archived row" }],
+    })
+    render(
+      <RecordManager
+        initialTemplates={[]}
+        initialLibrary={library}
+        initialWorkouts={[
+          {
+            id: "source",
+            workoutDate: "2026-08-20",
+            name: "Push day",
+            exercises: [],
+          },
+        ]}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Repeat workout" }))
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+      "Archived row"
+    )
+    expect(
+      screen.getByRole("link", { name: /manage exercise library/i })
+    ).toHaveAttribute("href", "/exercises")
   })
 
   it("starts a template with its configured blank set slots", async () => {

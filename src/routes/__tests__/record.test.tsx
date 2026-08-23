@@ -3,7 +3,7 @@ import {
   createMemoryHistory,
   createRouter,
 } from "@tanstack/react-router"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   createWorkoutFromTemplate: vi.fn(),
   updateWorkout: vi.fn(),
   deleteWorkout: vi.fn(),
+  prepareRepeatWorkout: vi.fn(),
+  readPreviousPerformanceCues: vi.fn(),
   getAuthState: vi.fn(),
   createRunningWorkout: vi.fn(),
   listRunningWorkouts: vi.fn(),
@@ -36,6 +38,8 @@ vi.mock("@/workouts/server-functions", () => ({
   createWorkoutFromTemplate: mocks.createWorkoutFromTemplate,
   updateWorkout: mocks.updateWorkout,
   deleteWorkout: mocks.deleteWorkout,
+  prepareRepeatWorkout: mocks.prepareRepeatWorkout,
+  readPreviousPerformanceCues: mocks.readPreviousPerformanceCues,
 }))
 vi.mock("@/auth/server-functions", () => ({
   getAuthState: mocks.getAuthState,
@@ -127,6 +131,41 @@ describe("record layout route", () => {
     expect(
       screen.queryByRole("heading", { name: /record a workout/i })
     ).toBeNull()
+  })
+
+  it("starts a repeat draft from a saved-workout page in one action", async () => {
+    const user = userEvent.setup()
+    mockAuthAndDiscovery()
+    mocks.readWorkout.mockResolvedValue(workout)
+    mocks.prepareRepeatWorkout.mockResolvedValue({
+      ok: true,
+      value: {
+        workoutDate: "2026-08-18",
+        name: "Push day",
+        exercises: [
+          {
+            activeVariant: {
+              id: "push-up",
+              name: "Push-up",
+              categoryName: "Push",
+            },
+            notes: "Felt strong",
+            sets: [{ reps: 8 }],
+          },
+        ],
+      },
+    })
+    renderRouterAt("/record/workout-1")
+    await user.click(
+      await screen.findByRole("button", { name: "Repeat workout" })
+    )
+    expect(mocks.prepareRepeatWorkout).toHaveBeenCalledWith({
+      data: { id: "workout-1" },
+    })
+    await waitFor(() =>
+      expect(screen.getByLabelText("General notes (optional)")).toHaveValue("")
+    )
+    expect(screen.getByLabelText(/set 1 reps/i)).toHaveValue("")
   })
 
   it("does not let a discovery-loader failure block the nested edit route", async () => {

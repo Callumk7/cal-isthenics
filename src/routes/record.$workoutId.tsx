@@ -6,14 +6,24 @@ import {
 } from "@tanstack/react-router"
 import { useState } from "react"
 
+import {
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Button, LinkButton } from "@/components/ui/button"
 import { listActiveExercises } from "@/exercises/server-functions"
 import {
+  editorFromRepeat,
   editorFromWorkout,
   Success,
   WorkoutDeleteDialog,
   WorkoutEditor,
 } from "@/record/workout-editor"
-import { readWorkout } from "@/workouts/server-functions"
+import { prepareRepeatWorkout, readWorkout } from "@/workouts/server-functions"
 
 export const Route = createFileRoute("/record/$workoutId")({
   loader: async ({ params }) => {
@@ -42,6 +52,28 @@ function WorkoutPage() {
   const navigate = useNavigate()
   const router = useRouter()
   const [savedId, setSavedId] = useState<string | null>(null)
+  const [repeatEditor, setRepeatEditor] = useState<ReturnType<
+    typeof editorFromRepeat
+  > | null>(null)
+  const [repeating, setRepeating] = useState(false)
+  const [repeatError, setRepeatError] = useState("")
+  async function repeat() {
+    setRepeating(true)
+    setRepeatError("")
+    try {
+      const result = await prepareRepeatWorkout({ data: { id: workout.id } })
+      if (result.ok) setRepeatEditor(editorFromRepeat(result.value))
+      else if (result.error === "repeat_unavailable")
+        setRepeatError(
+          `Can’t repeat this workout because these exercises are unavailable: ${result.unavailable?.map((item) => item.variantName).join(", ")}.`
+        )
+      else setRepeatError("This workout is no longer available.")
+    } catch {
+      setRepeatError("We couldn’t prepare that workout. Please try again.")
+    } finally {
+      setRepeating(false)
+    }
+  }
   async function returnToRecord() {
     // Keep history and progress loader data coherent after a calisthenics
     // mutation, matching the running-workout edit flow.
@@ -50,9 +82,23 @@ function WorkoutPage() {
   }
   if (savedId)
     return <Success id={savedId} onAnother={() => void returnToRecord()} />
+  if (repeatEditor)
+    return (
+      <WorkoutEditor
+        key="repeat"
+        editor={repeatEditor}
+        library={library}
+        onDiscard={() => setRepeatEditor(null)}
+        onSaved={(id) => {
+          void router.invalidate()
+          setSavedId(id)
+        }}
+      />
+    )
   return (
     <>
       <WorkoutEditor
+        key="source"
         editor={editorFromWorkout(workout)}
         library={library}
         workoutId={workout.id}
@@ -62,12 +108,36 @@ function WorkoutPage() {
           setSavedId(id)
         }}
       />
-      <div className="mx-auto -mt-6 w-full max-w-3xl px-4 pb-8 md:px-8">
+      <div className="mx-auto -mt-6 flex w-full max-w-3xl flex-wrap gap-2 px-4 pb-8 md:px-8">
+        <Button
+          className="h-11"
+          variant="outline"
+          isDisabled={repeating}
+          onPress={() => void repeat()}
+        >
+          {repeating ? "Preparing…" : "Repeat workout"}
+        </Button>
         <WorkoutDeleteDialog
           workoutId={workout.id}
           onDeleted={() => void returnToRecord()}
         />
       </div>
+      {repeatError && (
+        <AlertDialogContent isOpen onOpenChange={() => setRepeatError("")}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Workout can’t be repeated</AlertDialogTitle>
+            <AlertDialogDescription>
+              {repeatError}{" "}
+              <LinkButton variant="link" className="h-auto p-0" to="/exercises">
+                Manage exercise library
+              </LinkButton>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
     </>
   )
 }
