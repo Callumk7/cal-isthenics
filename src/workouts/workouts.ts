@@ -25,7 +25,7 @@ export type WorkoutMutationResult<T> =
   | { ok: true; value: T }
   | {
       ok: false
-      error: "validation" | "not_found" | "template_ineligible"
+      error: "validation" | "not_found"
       message?: string
       fieldErrors?: Record<string, JsonValue>
     }
