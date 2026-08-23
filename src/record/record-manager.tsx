@@ -1,4 +1,12 @@
 import { useState } from "react"
+import {
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { DumbbellIcon, FootprintsIcon, PlusIcon } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -12,8 +20,8 @@ import type {
 } from "@/templates/templates"
 import type { RunningWorkout } from "@/running/running-workouts"
 import { readWorkoutTemplate } from "@/templates/server-functions"
-import { listWorkouts } from "@/workouts/server-functions"
-import { Success, WorkoutEditor } from "./workout-editor"
+import { listWorkouts, prepareRepeatWorkout } from "@/workouts/server-functions"
+import { editorFromRepeat, Success, WorkoutEditor } from "./workout-editor"
 import type { Editor } from "./workout-editor"
 
 const key = () => crypto.randomUUID()
@@ -57,6 +65,8 @@ export function RecordManager({
   const [savedId, setSavedId] = useState<string | null>(null)
   const [date, setDate] = useState("")
   const [workouts, setWorkouts] = useState(initialWorkouts)
+  const [repeating, setRepeating] = useState<string | null>(null)
+  const [repeatError, setRepeatError] = useState("")
   const hasLibrary = initialLibrary.some(
     (category) =>
       category.archivedAt === null &&
@@ -83,6 +93,29 @@ export function RecordManager({
       setAnnouncement("We couldn’t load that template. Please try again.")
     } finally {
       setLoadingTemplate(null)
+    }
+  }
+  async function repeat(workoutId: string) {
+    setRepeating(workoutId)
+    setRepeatError("")
+    try {
+      const result = await prepareRepeatWorkout({ data: { id: workoutId } })
+      if (result.ok) {
+        setEditor(editorFromRepeat(result.value))
+        return
+      }
+      if (result.error === "repeat_unavailable") {
+        const names = result.unavailable
+          ?.map((item) => item.variantName)
+          .join(", ")
+        setRepeatError(
+          `Can’t repeat this workout because these exercises are unavailable: ${names}.`
+        )
+      } else setRepeatError("This workout is no longer available.")
+    } catch {
+      setRepeatError("We couldn’t prepare that workout. Please try again.")
+    } finally {
+      setRepeating(null)
     }
   }
   async function filterWorkouts(value: string) {
@@ -264,30 +297,59 @@ export function RecordManager({
             </p>
           ) : (
             workouts.map((workout) => (
-              <LinkButton
+              <div
                 key={workout.id}
-                variant="outline"
-                className="h-auto w-full justify-between p-3"
-                to="/record/$workoutId"
-                // LinkButton's React Aria wrapper erases typed-route params;
-                // cast the shape we know the route expects.
-                params={{ workoutId: workout.id } as never}
+                className="flex flex-wrap items-center gap-2 border p-3"
               >
-                <span className="min-w-0 break-words">
-                  <span className="block min-w-0 font-medium break-words">
-                    {workout.name || "Workout"}
+                <LinkButton
+                  variant="ghost"
+                  className="h-auto min-w-0 flex-1 justify-start p-0 text-left"
+                  to="/record/$workoutId"
+                  // LinkButton's React Aria wrapper erases typed-route params;
+                  // cast the shape we know the route expects.
+                  params={{ workoutId: workout.id } as never}
+                >
+                  <span className="min-w-0 break-words">
+                    <span className="block min-w-0 font-medium break-words">
+                      {workout.name || "Workout"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {workout.workoutDate} · {workout.exercises.length}{" "}
+                      {workout.exercises.length === 1
+                        ? "exercise"
+                        : "exercises"}
+                    </span>
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {workout.workoutDate} · {workout.exercises.length}{" "}
-                    {workout.exercises.length === 1 ? "exercise" : "exercises"}
-                  </span>
-                </span>
-                <span className="text-xs text-muted-foreground">View</span>
-              </LinkButton>
+                </LinkButton>
+                <Button
+                  className="h-11"
+                  variant="outline"
+                  isDisabled={repeating === workout.id}
+                  onPress={() => void repeat(workout.id)}
+                >
+                  {repeating === workout.id ? "Preparing…" : "Repeat workout"}
+                </Button>
+              </div>
             ))
           )}
         </div>
       </section>
+      {repeatError && (
+        <AlertDialogContent isOpen onOpenChange={() => setRepeatError("")}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Workout can’t be repeated</AlertDialogTitle>
+            <AlertDialogDescription>
+              {repeatError}{" "}
+              <LinkButton variant="link" className="h-auto p-0" to="/exercises">
+                Manage exercise library
+              </LinkButton>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
       <section className="mt-8" aria-labelledby="saved-runs-heading">
         <h2 id="saved-runs-heading" className="font-medium">
           Saved runs

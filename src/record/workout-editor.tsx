@@ -29,12 +29,18 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { getExercisePickerGroups } from "@/exercises/exercise-picker"
+import { localCalendarToday } from "@/lib/date"
 import type { ActiveCategory } from "@/exercises/exercise-picker"
-import type { WorkoutDetail } from "@/workouts/workouts"
+import type {
+  PreviousPerformanceCue,
+  RepeatWorkoutDetail,
+  WorkoutDetail,
+} from "@/workouts/workouts"
 import {
   createWorkout,
   createWorkoutFromTemplate,
   deleteWorkout,
+  readPreviousPerformanceCues,
   updateWorkout,
 } from "@/workouts/server-functions"
 
@@ -48,6 +54,8 @@ type ExerciseRow = {
   categoryName: string
   notes: string
   sets: SetRow[]
+  /** A repeat source's instance-specific performance is never editable. */
+  initialCue?: { workoutDate: string; reps: number[] }
 }
 export type Editor = {
   templateId?: string
@@ -76,6 +84,11 @@ export function WorkoutEditor({
   const [saveError, setSaveError] = useState("")
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [cues, setCues] = useState<
+    Record<string, PreviousPerformanceCue["cue"]>
+  >({})
+  const [cuesLoading, setCuesLoading] = useState(false)
+  const [cuesError, setCuesError] = useState(false)
   const pickerGroups = getExercisePickerGroups(library)
   const variants = pickerGroups.flatMap((group) =>
     group.variants.map((variant) => ({
@@ -96,6 +109,36 @@ export function WorkoutEditor({
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
   }, [])
+  const cueRequest = `${form.date}:${form.rows.map((row) => row.variantId).join(",")}`
+  async function loadCues() {
+    const variantIds = form.rows.map((row) => row.variantId).filter(Boolean)
+    if (!variantIds.length || !form.date) {
+      setCues({})
+      setCuesError(false)
+      return
+    }
+    setCuesLoading(true)
+    setCuesError(false)
+    try {
+      const result = await readPreviousPerformanceCues({
+        data: { variantIds, workoutDate: form.date },
+      })
+      setCues(
+        Object.fromEntries(
+          (result ?? []).map((item) => [item.variantId, item.cue])
+        )
+      )
+    } catch {
+      setCuesError(true)
+    } finally {
+      setCuesLoading(false)
+    }
+  }
+  useEffect(() => {
+    void loadCues()
+    // The request key changes only for a date or selected-exercise change;
+    // rep and note edits deliberately retain the current cues.
+  }, [cueRequest])
   const changed = (next: Editor) => {
     setDirty(true)
     setForm(next)
@@ -307,6 +350,10 @@ export function WorkoutEditor({
                       read-only and will be removed when saved.
                     </p>
                   )}
+                  <PerformanceCue
+                    cue={row.initialCue ?? cues[row.variantId]}
+                    loading={cuesLoading}
+                  />
                   <Field className="mt-3">
                     <FieldLabel htmlFor={`notes-${row.key}`}>
                       Exercise notes (optional)
@@ -471,6 +518,19 @@ export function WorkoutEditor({
             <PlusIcon /> Add exercise
           </Button>
         </div>
+        {cuesError && (
+          <p role="status" className="text-sm text-muted-foreground">
+            Previous performance couldn’t load.{" "}
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0"
+              onPress={() => void loadCues()}
+            >
+              Retry
+            </Button>
+          </p>
+        )}
         <Button type="submit" className="h-11" isDisabled={saving}>
           {saving ? "Saving…" : "Save workout"}
         </Button>
@@ -511,6 +571,54 @@ export function Success({
       </div>
     </main>
   )
+}
+
+function PerformanceCue({
+  cue,
+  loading,
+}: {
+  cue: PreviousPerformanceCue["cue"] | undefined
+  loading: boolean
+}) {
+  if (cue)
+    return (
+      <p
+        className="mt-1 text-xs text-muted-foreground"
+        aria-label={`Last on ${cue.workoutDate}: ${cue.reps.join(" / ")}`}
+      >
+        Last on{" "}
+        {new Intl.DateTimeFormat("en-GB", {
+          day: "numeric",
+          month: "short",
+        }).format(new Date(`${cue.workoutDate}T00:00:00`))}
+        : {cue.reps.join(" / ")}
+      </p>
+    )
+  return loading ? (
+    <p role="status" className="mt-1 text-xs text-muted-foreground">
+      Loading previous performance…
+    </p>
+  ) : null
+}
+
+export function editorFromRepeat(workout: RepeatWorkoutDetail): Editor {
+  return {
+    date: localCalendarToday(),
+    name: workout.name ?? "",
+    notes: "",
+    rows: workout.exercises.map((exercise) => ({
+      key: key(),
+      variantId: exercise.activeVariant.id,
+      variantName: exercise.activeVariant.name,
+      categoryName: exercise.activeVariant.categoryName,
+      notes: "",
+      initialCue: {
+        workoutDate: workout.workoutDate,
+        reps: exercise.sets.map((set) => set.reps),
+      },
+      sets: exercise.sets.map(() => ({ key: key(), reps: "" })),
+    })),
+  }
 }
 
 export function editorFromWorkout(workout: WorkoutDetail): Editor {

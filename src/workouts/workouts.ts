@@ -77,7 +77,7 @@ export type RepeatUnavailableEntry = {
   reason: "missing_variant" | "archived_variant" | "archived_category"
 }
 
-export type RepeatWorkoutDetail = WorkoutDetail & {
+export type RepeatWorkoutDetail = Omit<WorkoutDetail, "exercises"> & {
   exercises: Array<
     WorkoutDetail["exercises"][number] & {
       activeVariant: {

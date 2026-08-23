@@ -13,6 +13,7 @@ const workouts = vi.hoisted(() => ({
   createWorkoutFromTemplate: vi.fn(),
   updateWorkout: vi.fn(),
   deleteWorkout: vi.fn(),
+  readPreviousPerformanceCues: vi.fn(),
 }))
 vi.mock("@/workouts/server-functions", () => workouts)
 vi.mock("@/components/ui/router-link", () => ({
@@ -136,6 +137,52 @@ describe("WorkoutEditor (edit mode)", () => {
       variantName: "Removed row",
       categoryName: "Pull",
     })
+  })
+
+  it("refreshes previous-performance cues on date changes without clearing draft reps", async () => {
+    workouts.readPreviousPerformanceCues
+      .mockResolvedValueOnce([
+        { variantId: "push-up", cue: { workoutDate: "2026-08-17", reps: [7] } },
+      ])
+      .mockResolvedValueOnce([
+        {
+          variantId: "push-up",
+          cue: { workoutDate: "2026-08-18", reps: [8, 6] },
+        },
+      ])
+    render(
+      <WorkoutEditor
+        editor={{
+          date: "2026-08-18",
+          name: "",
+          notes: "",
+          rows: [
+            {
+              key: "row",
+              variantId: "push-up",
+              variantName: "Push-up",
+              categoryName: "Push",
+              notes: "",
+              sets: [{ key: "set", reps: "" }],
+            },
+          ],
+        }}
+        library={library}
+        onDiscard={() => {}}
+        onSaved={() => {}}
+      />
+    )
+    expect(await screen.findByText(/last on 17 aug: 7/i)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/set 1 reps/i), {
+      target: { value: "9" },
+    })
+    fireEvent.change(screen.getByLabelText("Date"), {
+      target: { value: "2026-08-19" },
+    })
+    expect(
+      await screen.findByText(/last on 18 aug: 8 \/ 6/i)
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/set 1 reps/i)).toHaveValue("9")
   })
 
   it("loads an edit form prefilled from the saved workout", () => {
