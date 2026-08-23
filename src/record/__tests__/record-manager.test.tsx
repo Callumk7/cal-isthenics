@@ -245,7 +245,7 @@ describe("RecordManager", () => {
     expect(window.localStorage.getItem("form.workout-draft")).not.toBeNull()
   })
 
-  it("retains the draft after a failed save and submits a rapid double activation once", async () => {
+  it("retains the draft while a save is in flight and submits a rapid double activation once", async () => {
     let resolveCreate:
       | ((value: { ok: true; value: { id: string } }) => void)
       | undefined

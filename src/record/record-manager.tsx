@@ -137,7 +137,7 @@ export function RecordManager({
     }
   }
   const begin = (next: Editor, origin: WorkoutDraftOrigin) => {
-    const draft = makeWorkoutDraft(crypto.randomUUID(), origin, reconcile(next))
+    const draft = makeWorkoutDraft(key(), origin, reconcile(next))
     persist(draft)
     setRecoveredDraft(null)
     setActiveDraft(draft)

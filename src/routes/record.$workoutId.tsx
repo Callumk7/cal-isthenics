@@ -23,6 +23,13 @@ import {
   WorkoutDeleteDialog,
   WorkoutEditor,
 } from "@/record/workout-editor"
+import {
+  clearWorkoutDraft,
+  makeWorkoutDraft,
+  readWorkoutDraft,
+  writeWorkoutDraft,
+} from "@/record/workout-draft-storage"
+import type { WorkoutDraft } from "@/record/workout-draft-storage"
 import { prepareRepeatWorkout, readWorkout } from "@/workouts/server-functions"
 
 export const Route = createFileRoute("/record/$workoutId")({
@@ -55,15 +62,30 @@ function WorkoutPage() {
   const [repeatEditor, setRepeatEditor] = useState<ReturnType<
     typeof editorFromRepeat
   > | null>(null)
+  const [repeatDraft, setRepeatDraft] = useState<WorkoutDraft | null>(null)
+  const [pendingRepeat, setPendingRepeat] = useState<ReturnType<
+    typeof editorFromRepeat
+  > | null>(null)
   const [repeating, setRepeating] = useState(false)
   const [repeatError, setRepeatError] = useState("")
+  function startRepeat(editor: ReturnType<typeof editorFromRepeat>) {
+    const draft = makeWorkoutDraft(crypto.randomUUID(), "repeat", editor)
+    writeWorkoutDraft(window.localStorage, draft)
+    setRepeatDraft(draft)
+    setRepeatEditor(editor)
+    setPendingRepeat(null)
+  }
   async function repeat() {
     setRepeating(true)
     setRepeatError("")
     try {
       const result = await prepareRepeatWorkout({ data: { id: workout.id } })
-      if (result.ok) setRepeatEditor(editorFromRepeat(result.value))
-      else if (result.error === "repeat_unavailable")
+      if (result.ok) {
+        const editor = editorFromRepeat(result.value)
+        const existing = readWorkoutDraft(window.localStorage)
+        if (existing.kind === "draft") setPendingRepeat(editor)
+        else startRepeat(editor)
+      } else if (result.error === "repeat_unavailable")
         setRepeatError(
           `Can’t repeat this workout because these exercises are unavailable: ${result.unavailable?.map((item) => item.variantName).join(", ")}.`
         )
@@ -88,8 +110,25 @@ function WorkoutPage() {
         key="repeat"
         editor={repeatEditor}
         library={library}
-        onDiscard={() => setRepeatEditor(null)}
+        draftId={repeatDraft?.requestId}
+        onDraftChange={(editor) => {
+          if (!repeatDraft) return
+          const draft = makeWorkoutDraft(
+            repeatDraft.requestId,
+            "repeat",
+            editor
+          )
+          writeWorkoutDraft(window.localStorage, draft)
+          setRepeatDraft(draft)
+        }}
+        onDiscard={() => {
+          clearWorkoutDraft(window.localStorage)
+          setRepeatDraft(null)
+          setRepeatEditor(null)
+        }}
         onSaved={(id) => {
+          clearWorkoutDraft(window.localStorage)
+          setRepeatDraft(null)
           void router.invalidate()
           setSavedId(id)
         }}
@@ -135,6 +174,25 @@ function WorkoutPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
+      {pendingRepeat && (
+        <AlertDialogContent
+          isOpen
+          onOpenChange={(open) => !open && setPendingRepeat(null)}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace saved workout draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your saved draft will be replaced only if you continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep draft</AlertDialogCancel>
+            <Button onPress={() => startRepeat(pendingRepeat)}>
+              Replace draft
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       )}

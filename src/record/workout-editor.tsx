@@ -118,9 +118,15 @@ export function WorkoutEditor({
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
   }, [])
-  const cueRequest = `${form.date}:${form.rows.map((row) => row.variantId).join(",")}`
+  const cueRequest = `${form.date}:${form.rows
+    .filter((row) => !row.unavailable)
+    .map((row) => row.variantId)
+    .join(",")}`
   async function loadCues() {
-    const variantIds = form.rows.map((row) => row.variantId).filter(Boolean)
+    const variantIds = form.rows
+      .filter((row) => !row.unavailable)
+      .map((row) => row.variantId)
+      .filter(Boolean)
     if (!variantIds.length || !form.date) {
       setCues({})
       setCuesError(false)
