@@ -145,10 +145,18 @@ export const workouts = sqliteTable(
     workoutDate: text("workout_date").notNull(),
     name: text("name"),
     notes: text("notes"),
+    /** Stable client key for idempotent creation; null for older/non-idempotent rows. */
+    clientRequestId: text("client_request_id"),
+    /** Canonical validated payload, used to reject incompatible idempotent retries. */
+    requestPayloadHash: text("request_payload_hash"),
     ...timestamps,
   },
   (table) => [
     index("workouts_user_date_idx").on(table.userId, table.workoutDate),
+    uniqueIndex("workouts_user_client_request_id_idx").on(
+      table.userId,
+      table.clientRequestId
+    ),
     check(
       "workouts_valid_date_check",
       sql`length(${table.workoutDate}) = 10 and coalesce(date(${table.workoutDate}), '') = ${table.workoutDate}`

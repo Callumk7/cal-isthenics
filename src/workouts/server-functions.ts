@@ -6,6 +6,8 @@ import {
   createWorkout as createWorkoutOp,
   createWorkoutFromTemplate as createWorkoutFromTemplateOp,
   deleteWorkout as deleteWorkoutOp,
+  getPreviousPerformanceCues as getPreviousPerformanceCuesOp,
+  getRepeatWorkout as getRepeatWorkoutOp,
   getWorkout,
   listWorkouts as listWorkoutsOp,
   updateWorkout as updateWorkoutOp,
@@ -25,6 +27,21 @@ export const listWorkouts = createServerFn({ method: "GET" })
 export const readWorkout = createServerFn({ method: "GET" })
   .validator((input: { id: string }) => input)
   .handler(async ({ data }) => getWorkout(db, await userId(), data.id))
+
+export const prepareRepeatWorkout = createServerFn({ method: "GET" })
+  .validator((input: { id: string }) => input)
+  .handler(async ({ data }) => getRepeatWorkoutOp(db, await userId(), data.id))
+
+export const readPreviousPerformanceCues = createServerFn({ method: "GET" })
+  .validator((input: { variantIds: string[]; workoutDate: string }) => input)
+  .handler(async ({ data }) =>
+    getPreviousPerformanceCuesOp(
+      db,
+      await userId(),
+      data.variantIds,
+      data.workoutDate
+    )
+  )
 
 export const createWorkout = createServerFn({ method: "POST" })
   .validator((input: WorkoutInput) => input)
