@@ -14,6 +14,8 @@ export type WorkoutInput = {
   workoutDate: unknown
   name?: unknown
   notes?: unknown
+  /** A stable ID generated once per client-side draft. */
+  clientRequestId?: unknown
   exercises: unknown
 }
 export type WorkoutExerciseInput = {
@@ -25,7 +27,11 @@ export type WorkoutMutationResult<T> =
   | { ok: true; value: T }
   | {
       ok: false
-      error: "validation" | "not_found"
+      error:
+        | "validation"
+        | "not_found"
+        | "request_conflict"
+        | "repeat_unavailable"
       message?: string
       fieldErrors?: Record<string, JsonValue>
     }
@@ -38,7 +44,10 @@ type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue }
 
-export type WorkoutDetail = typeof workouts.$inferSelect & {
+export type WorkoutDetail = Omit<
+  typeof workouts.$inferSelect,
+  "clientRequestId" | "requestPayloadHash"
+> & {
   exercises: Array<
     typeof workoutExercises.$inferSelect & {
       sets: Array<typeof workoutSets.$inferSelect>
@@ -50,6 +59,32 @@ type Variant = typeof exerciseVariants.$inferSelect & {
   category: typeof schema.exerciseCategories.$inferSelect
 }
 type ValidExercise = { variantId: string; notes: string | null; reps: number[] }
+
+export type RepeatUnavailableEntry = {
+  sourceExerciseId: string
+  sourceVariantId: string | null
+  categoryName: string
+  variantName: string
+  reason: "missing_variant" | "archived_variant" | "archived_category"
+}
+
+export type RepeatWorkoutDetail = WorkoutDetail & {
+  exercises: Array<
+    WorkoutDetail["exercises"][number] & {
+      activeVariant: {
+        id: string
+        categoryId: string
+        name: string
+        categoryName: string
+      }
+    }
+  >
+}
+
+export type PreviousPerformanceCue = {
+  variantId: string
+  cue: { workoutDate: string; reps: number[] } | null
+}
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const REP_ERROR = "Enter a positive whole number of reps."
@@ -104,6 +139,12 @@ async function validateInput(
     fieldErrors.workoutDate = "Enter a valid calendar date."
   const name = optionalText(input.name, "Name", 100)
   const notes = optionalText(input.notes, "Notes", 5000)
+  const requestId = optionalText(
+    input.clientRequestId,
+    "Client request ID",
+    200
+  )
+  if ("error" in requestId) fieldErrors.clientRequestId = requestId.error
   if ("error" in name) fieldErrors.name = name.error
   if ("error" in notes) fieldErrors.notes = notes.error
 
@@ -184,6 +225,7 @@ async function validateInput(
       workoutDate: input.workoutDate as string,
       name: "value" in name ? name.value : null,
       notes: "value" in notes ? notes.value : null,
+      clientRequestId: "value" in requestId ? requestId.value : null,
       entries,
       variants,
     },
@@ -204,6 +246,15 @@ function buildRows(
     workoutDate: values.value.workoutDate,
     name: values.value.name,
     notes: values.value.notes,
+    clientRequestId: values.value.clientRequestId,
+    requestPayloadHash: values.value.clientRequestId
+      ? JSON.stringify({
+          workoutDate: values.value.workoutDate,
+          name: values.value.name,
+          notes: values.value.notes,
+          exercises: values.value.entries,
+        })
+      : null,
     createdAt: now,
     updatedAt: now,
   }
@@ -251,6 +302,141 @@ export async function getWorkout(
   })
 }
 
+export async function getRepeatWorkout(
+  db: WorkoutDatabase,
+  userId: string,
+  id: string
+): Promise<
+  | { ok: true; value: RepeatWorkoutDetail }
+  | {
+      ok: false
+      error: "not_found" | "repeat_unavailable"
+      unavailable?: RepeatUnavailableEntry[]
+    }
+> {
+  const source = await getWorkout(db, userId, id)
+  if (!source) return { ok: false, error: "not_found" }
+  const sourceIds = source.exercises
+    .map((exercise) => exercise.sourceVariantId)
+    .filter((variantId): variantId is string => variantId !== null)
+  const active = sourceIds.length
+    ? await db.query.exerciseVariants.findMany({
+        where: and(
+          inArray(exerciseVariants.id, sourceIds),
+          eq(exerciseVariants.userId, userId)
+        ),
+        with: { category: true },
+      })
+    : []
+  const variants = new Map(
+    active.map((variant) => [variant.id, variant as Variant])
+  )
+  const unavailable = source.exercises.flatMap((exercise) => {
+    const variant = exercise.sourceVariantId
+      ? variants.get(exercise.sourceVariantId)
+      : undefined
+    const reason: RepeatUnavailableEntry["reason"] | null = !variant
+      ? "missing_variant"
+      : variant.archivedAt !== null
+        ? "archived_variant"
+        : variant.category.archivedAt !== null
+          ? "archived_category"
+          : null
+    return reason
+      ? [
+          {
+            sourceExerciseId: exercise.id,
+            sourceVariantId: exercise.sourceVariantId,
+            categoryName: exercise.categoryName,
+            variantName: exercise.variantName,
+            reason,
+          },
+        ]
+      : []
+  })
+  if (unavailable.length)
+    return { ok: false, error: "repeat_unavailable", unavailable }
+  return {
+    ok: true,
+    value: {
+      ...source,
+      exercises: source.exercises.map((exercise) => {
+        const variant = variants.get(exercise.sourceVariantId!)!
+        return {
+          ...exercise,
+          activeVariant: {
+            id: variant.id,
+            categoryId: variant.categoryId,
+            name: variant.name,
+            categoryName: variant.category.name,
+          },
+        }
+      }),
+    },
+  }
+}
+
+export async function getPreviousPerformanceCues(
+  db: WorkoutDatabase,
+  userId: string,
+  variantIds: string[],
+  workoutDate: string
+): Promise<PreviousPerformanceCue[] | undefined> {
+  if (!validDate(workoutDate)) return undefined
+  const uniqueIds = [...new Set(variantIds)]
+  const variants = uniqueIds.length
+    ? await db.query.exerciseVariants.findMany({
+        where: and(
+          inArray(exerciseVariants.id, uniqueIds),
+          eq(exerciseVariants.userId, userId)
+        ),
+        with: { category: true },
+      })
+    : []
+  if (
+    variants.length !== uniqueIds.length ||
+    variants.some(
+      (variant) =>
+        variant.archivedAt !== null || variant.category.archivedAt !== null
+    )
+  )
+    return undefined
+
+  const history = await db.query.workouts.findMany({
+    where: and(
+      eq(workouts.userId, userId),
+      lte(workouts.workoutDate, workoutDate)
+    ),
+    orderBy: [
+      desc(workouts.workoutDate),
+      desc(workouts.createdAt),
+      desc(workouts.id),
+    ],
+    with: {
+      exercises: {
+        orderBy: [asc(workoutExercises.position)],
+        with: { sets: { orderBy: [asc(workoutSets.position)] } },
+      },
+    },
+  })
+  return variantIds.map((variantId) => {
+    for (const workout of history) {
+      const exercise = workout.exercises.find(
+        (entry) => entry.sourceVariantId === variantId
+      )
+      if (exercise)
+        return {
+          variantId,
+          cue: {
+            workoutDate: workout.workoutDate,
+            reps: exercise.sets.map((set) => set.reps),
+          },
+        }
+    }
+    return { variantId, cue: null }
+  })
+}
+
 export async function createWorkout(
   db: WorkoutDatabase,
   userId: string,
@@ -261,11 +447,40 @@ export async function createWorkout(
   if ("error" in validated)
     return { ok: false, error: "validation", fieldErrors: validated.error }
   const rows = buildRows(userId, validated, now)
+
+  if (rows.workout.clientRequestId) {
+    const existing = await db.query.workouts.findFirst({
+      where: and(
+        eq(workouts.userId, userId),
+        eq(workouts.clientRequestId, rows.workout.clientRequestId)
+      ),
+    })
+    if (existing) {
+      return existing.requestPayloadHash === rows.workout.requestPayloadHash
+        ? { ok: true, value: (await getWorkout(db, userId, existing.id))! }
+        : { ok: false, error: "request_conflict" }
+    }
+
+    // The database unique index is the concurrency boundary. If another request
+    // wins this insert, its row is read below; only the winning request writes
+    // children, so retries never duplicate exercise or set rows.
+    await db.insert(workouts).values(rows.workout).onConflictDoNothing()
+    const persisted = await db.query.workouts.findFirst({
+      where: and(
+        eq(workouts.userId, userId),
+        eq(workouts.clientRequestId, rows.workout.clientRequestId)
+      ),
+    })
+    if (!persisted || persisted.id !== rows.workout.id)
+      return persisted?.requestPayloadHash === rows.workout.requestPayloadHash
+        ? { ok: true, value: (await getWorkout(db, userId, persisted.id))! }
+        : { ok: false, error: "request_conflict" }
+  } else {
+    await db.insert(workouts).values(rows.workout)
+  }
+
   await db.batch([
-    db.insert(workouts).values(rows.workout),
-    ...(rows.exercises.length
-      ? [db.insert(workoutExercises).values(rows.exercises)]
-      : []),
+    db.insert(workoutExercises).values(rows.exercises),
     ...(rows.sets.length ? [db.insert(workoutSets).values(rows.sets)] : []),
   ])
   return {

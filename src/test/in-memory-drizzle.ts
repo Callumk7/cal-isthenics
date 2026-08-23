@@ -314,14 +314,30 @@ export function createInMemoryDrizzle() {
       const name = nameOf(table)
       return {
         values(values: Row | Row[]) {
-          return statement(() => {
-            tables[name].rows.push(
-              ...(Array.isArray(values) ? values : [values]).map((row) => ({
-                ...row,
-              }))
-            )
-            return { success: true }
-          })
+          const insert = (ignoreConflicts = false) =>
+            statement(() => {
+              const rows = Array.isArray(values) ? values : [values]
+              for (const row of rows) {
+                const duplicate = tables[name].rows.some(
+                  (existing) =>
+                    existing.id === row.id ||
+                    (name === "workouts" &&
+                      row.clientRequestId !== null &&
+                      row.clientRequestId !== undefined &&
+                      existing.userId === row.userId &&
+                      existing.clientRequestId === row.clientRequestId)
+                )
+                if (!duplicate) tables[name].rows.push({ ...row })
+                else if (!ignoreConflicts)
+                  throw new Error("UNIQUE constraint failed")
+              }
+              return { success: true }
+            })
+          const result = insert() as Statement & {
+            onConflictDoNothing: () => Statement
+          }
+          result.onConflictDoNothing = () => insert(true)
+          return result
         },
       }
     },
