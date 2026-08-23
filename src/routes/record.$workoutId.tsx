@@ -7,7 +7,6 @@ import {
 import { useState } from "react"
 
 import {
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -57,7 +56,6 @@ function WorkoutPage() {
     typeof editorFromRepeat
   > | null>(null)
   const [repeating, setRepeating] = useState(false)
-  const [repeatConfirm, setRepeatConfirm] = useState(false)
   const [repeatError, setRepeatError] = useState("")
   async function repeat() {
     setRepeating(true)
@@ -87,6 +85,7 @@ function WorkoutPage() {
   if (repeatEditor)
     return (
       <WorkoutEditor
+        key="repeat"
         editor={repeatEditor}
         library={library}
         onDiscard={() => setRepeatEditor(null)}
@@ -99,6 +98,7 @@ function WorkoutPage() {
   return (
     <>
       <WorkoutEditor
+        key="source"
         editor={editorFromWorkout(workout)}
         library={library}
         workoutId={workout.id}
@@ -113,7 +113,7 @@ function WorkoutPage() {
           className="h-11"
           variant="outline"
           isDisabled={repeating}
-          onPress={() => setRepeatConfirm(true)}
+          onPress={() => void repeat()}
         >
           {repeating ? "Preparing…" : "Repeat workout"}
         </Button>
@@ -122,23 +122,6 @@ function WorkoutPage() {
           onDeleted={() => void returnToRecord()}
         />
       </div>
-      {repeatConfirm && (
-        <AlertDialogContent isOpen onOpenChange={setRepeatConfirm}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Start a new repeated workout?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This replaces the current local editor. Your saved workout will
-              not change.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onPress={() => void repeat()}>
-              Repeat workout
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      )}
       {repeatError && (
         <AlertDialogContent isOpen onOpenChange={() => setRepeatError("")}>
           <AlertDialogHeader>
