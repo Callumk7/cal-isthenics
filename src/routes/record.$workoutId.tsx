@@ -68,9 +68,13 @@ function WorkoutPage() {
   > | null>(null)
   const [repeating, setRepeating] = useState(false)
   const [repeatError, setRepeatError] = useState("")
+  const [draftStorageError, setDraftStorageError] = useState("")
   function startRepeat(editor: ReturnType<typeof editorFromRepeat>) {
     const draft = makeWorkoutDraft(crypto.randomUUID(), "repeat", editor)
-    writeWorkoutDraft(window.localStorage, draft)
+    if (!writeWorkoutDraft(window.localStorage, draft))
+      setDraftStorageError(
+        "Draft recovery is unavailable in this browser. Your workout remains open, but it may not survive a refresh."
+      )
     setRepeatDraft(draft)
     setRepeatEditor(editor)
     setPendingRepeat(null)
@@ -84,7 +88,17 @@ function WorkoutPage() {
         const editor = editorFromRepeat(result.value)
         const existing = readWorkoutDraft(window.localStorage)
         if (existing.kind === "draft") setPendingRepeat(editor)
-        else startRepeat(editor)
+        else {
+          if (existing.kind === "unavailable")
+            setDraftStorageError(
+              "Draft recovery is unavailable in this browser."
+            )
+          if (existing.kind === "invalid")
+            setDraftStorageError(
+              "An unreadable saved workout draft was removed."
+            )
+          startRepeat(editor)
+        }
       } else if (result.error === "repeat_unavailable")
         setRepeatError(
           `Can’t repeat this workout because these exercises are unavailable: ${result.unavailable?.map((item) => item.variantName).join(", ")}.`
@@ -118,16 +132,25 @@ function WorkoutPage() {
             "repeat",
             editor
           )
-          writeWorkoutDraft(window.localStorage, draft)
+          if (!writeWorkoutDraft(window.localStorage, draft))
+            setDraftStorageError(
+              "Draft recovery is unavailable in this browser. Your workout remains open, but it may not survive a refresh."
+            )
           setRepeatDraft(draft)
         }}
         onDiscard={() => {
-          clearWorkoutDraft(window.localStorage)
+          if (!clearWorkoutDraft(window.localStorage))
+            setDraftStorageError(
+              "Draft recovery is unavailable in this browser."
+            )
           setRepeatDraft(null)
           setRepeatEditor(null)
         }}
         onSaved={(id) => {
-          clearWorkoutDraft(window.localStorage)
+          if (!clearWorkoutDraft(window.localStorage))
+            setDraftStorageError(
+              "Draft recovery is unavailable in this browser."
+            )
           setRepeatDraft(null)
           void router.invalidate()
           setSavedId(id)
@@ -136,6 +159,11 @@ function WorkoutPage() {
     )
   return (
     <>
+      {draftStorageError && (
+        <p className="sr-only" role="status" aria-live="polite">
+          {draftStorageError}
+        </p>
+      )}
       <WorkoutEditor
         key="source"
         editor={editorFromWorkout(workout)}

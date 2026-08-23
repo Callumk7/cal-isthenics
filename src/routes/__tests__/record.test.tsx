@@ -3,7 +3,7 @@ import {
   createMemoryHistory,
   createRouter,
 } from "@tanstack/react-router"
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -133,8 +133,18 @@ describe("record layout route", () => {
     ).toBeNull()
   })
 
-  it("starts a repeat draft from a saved-workout page in one action", async () => {
-    const user = userEvent.setup()
+  it("confirms replacement and persists a repeat draft from a saved-workout page", async () => {
+    window.localStorage.clear()
+    window.localStorage.setItem(
+      "form.workout-draft",
+      JSON.stringify({
+        version: 1,
+        requestId: "existing-request",
+        savedAt: Date.now(),
+        origin: "blank",
+        editor: { date: "2026-08-18", name: "Keep me", notes: "", rows: [] },
+      })
+    )
     mockAuthAndDiscovery()
     mocks.readWorkout.mockResolvedValue(workout)
     mocks.prepareRepeatWorkout.mockResolvedValue({
@@ -156,15 +166,24 @@ describe("record layout route", () => {
       },
     })
     renderRouterAt("/record/workout-1")
-    await user.click(
+    fireEvent.click(
       await screen.findByRole("button", { name: "Repeat workout" })
     )
     expect(mocks.prepareRepeatWorkout).toHaveBeenCalledWith({
       data: { id: "workout-1" },
     })
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
+      "Replace saved workout draft?"
+    )
+    fireEvent.click(screen.getByRole("button", { name: /replace draft/i }))
     await waitFor(() =>
       expect(screen.getByLabelText("General notes (optional)")).toHaveValue("")
     )
+    expect(
+      JSON.parse(window.localStorage.getItem("form.workout-draft")!)
+    ).toMatchObject({
+      origin: "repeat",
+    })
     expect(screen.getByLabelText(/set 1 reps/i)).toHaveValue("")
   })
 
