@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button, LinkButton } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { localCalendarToday } from "@/lib/date"
-import type { ActiveCategory } from "@/templates/template-manager"
+import type { ActiveCategory } from "@/exercises/exercise-picker"
 import type {
   WorkoutTemplateDetail,
   WorkoutTemplateSummary,

@@ -72,7 +72,7 @@ export async function getActiveExerciseLibrary(
   db: ExerciseLibraryDatabase,
   userId: string
 ) {
-  return db.query.exerciseCategories.findMany({
+  const categories = await db.query.exerciseCategories.findMany({
     where: and(
       eq(exerciseCategories.userId, userId),
       isNull(exerciseCategories.archivedAt)
@@ -88,6 +88,8 @@ export async function getActiveExerciseLibrary(
     },
     orderBy: [asc(exerciseCategories.name)],
   })
+
+  return categories.filter((category) => category.variants.length > 0)
 }
 
 /** Includes archived rows so templates and historical references remain resolvable. */

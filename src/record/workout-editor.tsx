@@ -19,12 +19,17 @@ import { Button, LinkButton } from "@/components/ui/button"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
-  NativeSelect,
-  NativeSelectOptGroup,
-  NativeSelectOption,
-} from "@/components/ui/native-select"
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import type { ActiveCategory } from "@/templates/template-manager"
+import { getExercisePickerGroups } from "@/exercises/exercise-picker"
+import type { ActiveCategory } from "@/exercises/exercise-picker"
 import type { WorkoutDetail } from "@/workouts/workouts"
 import {
   createWorkout,
@@ -71,12 +76,12 @@ export function WorkoutEditor({
   const [saveError, setSaveError] = useState("")
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
-  const variants = library.flatMap((category) =>
-    category.archivedAt === null
-      ? category.variants
-          .filter((variant) => variant.archivedAt === null)
-          .map((variant) => ({ ...variant, categoryName: category.name }))
-      : []
+  const pickerGroups = getExercisePickerGroups(library)
+  const variants = pickerGroups.flatMap((group) =>
+    group.variants.map((variant) => ({
+      ...variant,
+      categoryName: group.name,
+    }))
   )
 
   const onBeforeUnload = useEffectEvent((event: BeforeUnloadEvent) => {
@@ -431,30 +436,32 @@ export function WorkoutEditor({
           ))}
         </div>
         <div className="flex gap-2">
-          <label className="sr-only" htmlFor="exercise-picker">
-            Exercise
-          </label>
-          <NativeSelect
-            id="exercise-picker"
-            className="h-11 flex-1"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
+          <Select
+            aria-label="Exercise"
+            className="min-w-0 flex-1"
+            selectedKey={selected || null}
+            onSelectionChange={(selectedKey) =>
+              setSelected(String(selectedKey))
+            }
+            isDisabled={saving}
+            placeholder="Select an exercise"
           >
-            <NativeSelectOption value="">Select an exercise</NativeSelectOption>
-            {library
-              .filter((category) => category.archivedAt === null)
-              .map((category) => (
-                <NativeSelectOptGroup key={category.id} label={category.name}>
-                  {category.variants
-                    .filter((variant) => variant.archivedAt === null)
-                    .map((variant) => (
-                      <NativeSelectOption key={variant.id} value={variant.id}>
-                        {variant.name}
-                      </NativeSelectOption>
-                    ))}
-                </NativeSelectOptGroup>
+            <SelectTrigger className="h-11!">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {pickerGroups.map((group) => (
+                <SelectGroup key={group.name}>
+                  <SelectLabel>{group.name}</SelectLabel>
+                  {group.variants.map((variant) => (
+                    <SelectItem key={variant.id} id={variant.id}>
+                      {variant.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
-          </NativeSelect>
+            </SelectContent>
+          </Select>
           <Button
             type="button"
             className="h-11"

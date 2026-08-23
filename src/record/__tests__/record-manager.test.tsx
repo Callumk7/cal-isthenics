@@ -105,6 +105,11 @@ const detail = {
   ],
 }
 
+async function selectExercise(name: string) {
+  fireEvent.click(screen.getByLabelText("Exercise"))
+  fireEvent.click(await screen.findByRole("option", { name }))
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
 })
@@ -123,16 +128,12 @@ describe("RecordManager", () => {
     ).toBeInTheDocument()
   })
 
-  it("starts blank, supports repeated exercises and validates reps", () => {
+  it("starts blank, supports repeated exercises and validates reps", async () => {
     render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
     fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
     expect(screen.getAllByRole("heading", { name: "Push-up" })).toHaveLength(2)
     expect(screen.queryByText("Old")).not.toBeInTheDocument()
@@ -163,9 +164,7 @@ describe("RecordManager", () => {
       .mockResolvedValueOnce({ ok: true, value: { id: "workout-123" } })
     render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
     fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
     fireEvent.change(screen.getByLabelText(/set 1 reps/i), {
       target: { value: "8" },
@@ -182,13 +181,11 @@ describe("RecordManager", () => {
     )
   })
 
-  it("reorders exercise rows with the move controls", () => {
+  it("reorders exercise rows with the move controls", async () => {
     render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
     fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
-    for (const variant of ["push-up", "dips"]) {
-      fireEvent.change(screen.getByLabelText("Exercise"), {
-        target: { value: variant },
-      })
+    for (const variant of ["Push-up", "Dips"]) {
+      await selectExercise(variant)
       fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
     }
     let headings = screen.getAllByRole("heading", { level: 2 })
@@ -217,9 +214,7 @@ describe("RecordManager", () => {
     fireEvent.change(screen.getByLabelText("General notes (optional)"), {
       target: { value: "Felt strong" },
     })
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
     fireEvent.change(screen.getByLabelText("Exercise notes (optional)"), {
       target: { value: "Slow negatives" },
@@ -241,12 +236,10 @@ describe("RecordManager", () => {
     })
   })
 
-  it("blocks decimal, zero, and negative reps from being saved", () => {
+  it("blocks decimal, zero, and negative reps from being saved", async () => {
     render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
     fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
-    fireEvent.change(screen.getByLabelText("Exercise"), {
-      target: { value: "push-up" },
-    })
+    await selectExercise("Push-up")
     fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
     for (const value of ["1.5", "0", "-2", "abc"]) {
       fireEvent.change(screen.getByLabelText(/set 1 reps/i), {
@@ -493,9 +486,7 @@ describe("RecordManager", () => {
       workouts.listWorkouts.mockResolvedValue([])
       render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
       fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
-      fireEvent.change(screen.getByLabelText("Exercise"), {
-        target: { value: "push-up" },
-      })
+      await selectExercise("Push-up")
       fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
       fireEvent.change(screen.getByLabelText(/set 1 reps/i), {
         target: { value: "8" },
