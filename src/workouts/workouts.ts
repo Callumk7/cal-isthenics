@@ -60,6 +60,15 @@ type Variant = typeof exerciseVariants.$inferSelect & {
 }
 type ValidExercise = { variantId: string; notes: string | null; reps: number[] }
 
+function publicWorkout(workout: typeof workouts.$inferSelect) {
+  const {
+    clientRequestId: _clientRequestId,
+    requestPayloadHash: _requestPayloadHash,
+    ...detail
+  } = workout
+  return detail
+}
+
 export type RepeatUnavailableEntry = {
   sourceExerciseId: string
   sourceVariantId: string | null
@@ -291,7 +300,7 @@ export async function getWorkout(
   userId: string,
   id: string
 ): Promise<WorkoutDetail | undefined> {
-  return db.query.workouts.findFirst({
+  const workout = await db.query.workouts.findFirst({
     where: and(eq(workouts.id, id), eq(workouts.userId, userId)),
     with: {
       exercises: {
@@ -300,6 +309,9 @@ export async function getWorkout(
       },
     },
   })
+  return workout
+    ? { ...publicWorkout(workout), exercises: workout.exercises }
+    : undefined
 }
 
 export async function getRepeatWorkout(
@@ -448,6 +460,12 @@ export async function createWorkout(
     return { ok: false, error: "validation", fieldErrors: validated.error }
   const rows = buildRows(userId, validated, now)
 
+  const inserts = [
+    db.insert(workouts).values(rows.workout),
+    db.insert(workoutExercises).values(rows.exercises),
+    ...(rows.sets.length ? [db.insert(workoutSets).values(rows.sets)] : []),
+  ] as const
+
   if (rows.workout.clientRequestId) {
     const existing = await db.query.workouts.findFirst({
       where: and(
@@ -461,32 +479,32 @@ export async function createWorkout(
         : { ok: false, error: "request_conflict" }
     }
 
-    // The database unique index is the concurrency boundary. If another request
-    // wins this insert, its row is read below; only the winning request writes
-    // children, so retries never duplicate exercise or set rows.
-    await db.insert(workouts).values(rows.workout).onConflictDoNothing()
-    const persisted = await db.query.workouts.findFirst({
-      where: and(
-        eq(workouts.userId, userId),
-        eq(workouts.clientRequestId, rows.workout.clientRequestId)
-      ),
-    })
-    if (!persisted || persisted.id !== rows.workout.id)
+    try {
+      await db.batch(inserts)
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !/unique constraint failed/i.test(error.message)
+      )
+        throw error
+      const persisted = await db.query.workouts.findFirst({
+        where: and(
+          eq(workouts.userId, userId),
+          eq(workouts.clientRequestId, rows.workout.clientRequestId)
+        ),
+      })
       return persisted?.requestPayloadHash === rows.workout.requestPayloadHash
         ? { ok: true, value: (await getWorkout(db, userId, persisted.id))! }
         : { ok: false, error: "request_conflict" }
+    }
   } else {
-    await db.insert(workouts).values(rows.workout)
+    await db.batch(inserts)
   }
 
-  await db.batch([
-    db.insert(workoutExercises).values(rows.exercises),
-    ...(rows.sets.length ? [db.insert(workoutSets).values(rows.sets)] : []),
-  ])
   return {
     ok: true,
     value: {
-      ...rows.workout,
+      ...publicWorkout(rows.workout),
       exercises: rows.exercises.map((exercise) => ({
         ...exercise,
         sets: rows.sets.filter((set) => set.workoutExerciseId === exercise.id),
@@ -544,7 +562,7 @@ export async function updateWorkout(
   return {
     ok: true,
     value: {
-      ...rows.workout,
+      ...publicWorkout(rows.workout),
       exercises: rows.exercises.map((exercise) => ({
         ...exercise,
         sets: rows.sets.filter((set) => set.workoutExerciseId === exercise.id),
@@ -577,10 +595,14 @@ export async function listWorkouts(
   if (filters.from) conditions.push(gte(workouts.workoutDate, filters.from))
   if (filters.to) conditions.push(lte(workouts.workoutDate, filters.to))
   const limit = Math.min(Math.max(filters.limit ?? 20, 1), 100)
-  return db.query.workouts.findMany({
+  const results = await db.query.workouts.findMany({
     where: and(...conditions),
     orderBy: [desc(workouts.workoutDate), desc(workouts.createdAt)],
     with: { exercises: true },
     limit,
   })
+  return results.map(({ exercises, ...workout }) => ({
+    ...publicWorkout(workout),
+    exercises,
+  }))
 }
