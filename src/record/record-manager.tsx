@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   AlertDialogCancel,
   AlertDialogContent,
@@ -23,6 +23,13 @@ import { readWorkoutTemplate } from "@/templates/server-functions"
 import { listWorkouts, prepareRepeatWorkout } from "@/workouts/server-functions"
 import { editorFromRepeat, Success, WorkoutEditor } from "./workout-editor"
 import type { Editor } from "./workout-editor"
+import {
+  clearWorkoutDraft,
+  makeWorkoutDraft,
+  readWorkoutDraft,
+  writeWorkoutDraft,
+} from "./workout-draft-storage"
+import type { WorkoutDraft, WorkoutDraftOrigin } from "./workout-draft-storage"
 
 const key = () => crypto.randomUUID()
 
@@ -67,13 +74,85 @@ export function RecordManager({
   const [workouts, setWorkouts] = useState(initialWorkouts)
   const [repeating, setRepeating] = useState<string | null>(null)
   const [repeatError, setRepeatError] = useState("")
+  const [recoveredDraft, setRecoveredDraft] = useState<WorkoutDraft | null>(
+    null
+  )
+  const [activeDraft, setActiveDraft] = useState<WorkoutDraft | null>(null)
+  const [pendingStart, setPendingStart] = useState<{
+    editor: Editor
+    origin: WorkoutDraftOrigin
+  } | null>(null)
+  const [discardingDraft, setDiscardingDraft] = useState(false)
+  const storage = () => window.localStorage
+  const persist = (draft: WorkoutDraft) => {
+    try {
+      if (!writeWorkoutDraft(storage(), draft))
+        throw new Error("storage unavailable")
+    } catch {
+      setAnnouncement(
+        "Draft recovery is unavailable in this browser. Your workout remains open, but it may not survive a refresh."
+      )
+    }
+  }
+  const clearPersisted = () => {
+    try {
+      if (!clearWorkoutDraft(storage())) throw new Error("storage unavailable")
+    } catch {
+      setAnnouncement("Draft recovery is unavailable in this browser.")
+    }
+  }
+  useEffect(() => {
+    try {
+      const result = readWorkoutDraft(storage())
+      if (result.kind === "draft") setRecoveredDraft(result.draft)
+      else if (result.kind === "invalid")
+        setAnnouncement("An unreadable saved workout draft was removed.")
+      else if (result.kind === "unavailable")
+        setAnnouncement("Draft recovery is unavailable in this browser.")
+    } catch {
+      setAnnouncement("Draft recovery is unavailable in this browser.")
+    }
+  }, [])
   const hasLibrary = initialLibrary.some(
     (category) =>
       category.archivedAt === null &&
       category.variants.some((variant) => variant.archivedAt === null)
   )
+  const reconcile = (value: Editor): Editor => {
+    const active = new Set(
+      initialLibrary.flatMap((category) =>
+        category.archivedAt === null
+          ? category.variants
+              .filter((variant) => variant.archivedAt === null)
+              .map((variant) => variant.id)
+          : []
+      )
+    )
+    return {
+      ...value,
+      rows: value.rows.map((row) => ({
+        ...row,
+        unavailable: Boolean(row.variantId && !active.has(row.variantId)),
+      })),
+    }
+  }
+  const begin = (next: Editor, origin: WorkoutDraftOrigin) => {
+    const draft = makeWorkoutDraft(crypto.randomUUID(), origin, reconcile(next))
+    persist(draft)
+    setRecoveredDraft(null)
+    setActiveDraft(draft)
+    setEditor(draft.editor)
+    setPendingStart(null)
+  }
+  const requestStart = (next: Editor, origin: WorkoutDraftOrigin) => {
+    if (recoveredDraft) setPendingStart({ editor: next, origin })
+    else begin(next, origin)
+  }
   const blank = () =>
-    setEditor({ date: localCalendarToday(), name: "", notes: "", rows: [] })
+    requestStart(
+      { date: localCalendarToday(), name: "", notes: "", rows: [] },
+      "blank"
+    )
   async function startTemplate(template: WorkoutTemplateSummary) {
     setLoadingTemplate(template.id)
     try {
@@ -82,13 +161,16 @@ export function RecordManager({
         setAnnouncement("This template is no longer eligible to start.")
         return
       }
-      setEditor({
-        templateId: detail.id,
-        date: localCalendarToday(),
-        name: detail.name,
-        notes: "",
-        rows: detail.exercises.map(rowFromTemplate),
-      })
+      requestStart(
+        {
+          templateId: detail.id,
+          date: localCalendarToday(),
+          name: detail.name,
+          notes: "",
+          rows: detail.exercises.map(rowFromTemplate),
+        },
+        "template"
+      )
     } catch {
       setAnnouncement("We couldn’t load that template. Please try again.")
     } finally {
@@ -101,7 +183,7 @@ export function RecordManager({
     try {
       const result = await prepareRepeatWorkout({ data: { id: workoutId } })
       if (result.ok) {
-        setEditor(editorFromRepeat(result.value))
+        requestStart(editorFromRepeat(result.value), "repeat")
         return
       }
       if (result.error === "repeat_unavailable") {
@@ -157,9 +239,29 @@ export function RecordManager({
       <WorkoutEditor
         editor={editor}
         library={initialLibrary}
-        onDiscard={() => setEditor(null)}
-        onSaved={(id) => {
+        draftId={activeDraft?.requestId}
+        onDraftChange={(next) => {
+          if (activeDraft) {
+            const draft = makeWorkoutDraft(
+              activeDraft.requestId,
+              activeDraft.origin,
+              next
+            )
+            setActiveDraft(draft)
+            persist(draft)
+          }
+        }}
+        onDiscard={() => {
           setEditor(null)
+          clearPersisted()
+          setRecoveredDraft(null)
+          setActiveDraft(null)
+        }}
+        onSaved={(id) => {
+          clearPersisted()
+          setEditor(null)
+          setRecoveredDraft(null)
+          setActiveDraft(null)
           setSavedId(id)
           void refreshWorkouts()
         }}
@@ -181,6 +283,42 @@ export function RecordManager({
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
+      {recoveredDraft && (
+        <section
+          className="mb-6 border border-primary/30 bg-primary/5 p-4"
+          aria-labelledby="draft-heading"
+        >
+          <h2 id="draft-heading" className="font-medium">
+            Saved workout draft
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            A {recoveredDraft.origin} workout draft was saved on this device.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              className="h-11"
+              onPress={() => {
+                const restored = {
+                  ...recoveredDraft,
+                  editor: reconcile(recoveredDraft.editor),
+                }
+                setActiveDraft(restored)
+                setRecoveredDraft(null)
+                setEditor(restored.editor)
+              }}
+            >
+              Resume workout
+            </Button>
+            <Button
+              className="h-11"
+              variant="outline"
+              onPress={() => setDiscardingDraft(true)}
+            >
+              Discard draft
+            </Button>
+          </div>
+        </section>
+      )}
       <section
         className="mb-6 border bg-muted/30 p-4"
         aria-labelledby="run-entry-heading"
@@ -334,6 +472,53 @@ export function RecordManager({
           )}
         </div>
       </section>
+      {pendingStart && (
+        <AlertDialogContent
+          isOpen
+          onOpenChange={(open) => !open && setPendingStart(null)}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace saved workout draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your saved draft will be replaced only if you continue.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep draft</AlertDialogCancel>
+            <Button
+              onPress={() => begin(pendingStart.editor, pendingStart.origin)}
+            >
+              Replace draft
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
+      {discardingDraft && (
+        <AlertDialogContent
+          isOpen
+          onOpenChange={(open) => !open && setDiscardingDraft(false)}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard saved workout draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onPress={() => {
+                clearPersisted()
+                setRecoveredDraft(null)
+                setDiscardingDraft(false)
+              }}
+            >
+              Discard draft
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
       {repeatError && (
         <AlertDialogContent isOpen onOpenChange={() => setRepeatError("")}>
           <AlertDialogHeader>
