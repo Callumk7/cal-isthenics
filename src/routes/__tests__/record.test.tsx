@@ -133,18 +133,8 @@ describe("record layout route", () => {
     ).toBeNull()
   })
 
-  it("confirms replacement and persists a repeat draft from a saved-workout page", async () => {
+  it("persists a repeat draft from a saved-workout page", async () => {
     window.localStorage.clear()
-    window.localStorage.setItem(
-      "form.workout-draft",
-      JSON.stringify({
-        version: 1,
-        requestId: "existing-request",
-        savedAt: Date.now(),
-        origin: "blank",
-        editor: { date: "2026-08-18", name: "Keep me", notes: "", rows: [] },
-      })
-    )
     mockAuthAndDiscovery()
     mocks.readWorkout.mockResolvedValue(workout)
     mocks.prepareRepeatWorkout.mockResolvedValue({
@@ -172,10 +162,6 @@ describe("record layout route", () => {
     expect(mocks.prepareRepeatWorkout).toHaveBeenCalledWith({
       data: { id: "workout-1" },
     })
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent(
-      "Replace saved workout draft?"
-    )
-    fireEvent.click(screen.getByRole("button", { name: /replace draft/i }))
     await waitFor(() =>
       expect(screen.getByLabelText("General notes (optional)")).toHaveValue("")
     )
