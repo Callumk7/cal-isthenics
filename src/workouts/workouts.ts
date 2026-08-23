@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm"
+import { and, asc, desc, eq, gte, inArray, isNull, lte } from "drizzle-orm"
 import type { DrizzleD1Database } from "drizzle-orm/d1"
 
 import type * as schema from "../db/schema"
@@ -7,8 +7,6 @@ import {
   workoutExercises,
   workoutSets,
   workouts,
-  workoutTemplateExercises,
-  workoutTemplates,
 } from "../db/schema"
 
 export type WorkoutDatabase = DrizzleD1Database<typeof schema>
@@ -27,7 +25,7 @@ export type WorkoutMutationResult<T> =
   | { ok: true; value: T }
   | {
       ok: false
-      error: "validation" | "not_found" | "template_ineligible"
+      error: "validation" | "not_found"
       message?: string
       fieldErrors?: Record<string, JsonValue>
     }
@@ -161,13 +159,19 @@ async function validateInput(
     ? await db.query.exerciseVariants.findMany({
         where: and(
           inArray(exerciseVariants.id, ids),
-          eq(exerciseVariants.userId, userId)
+          eq(exerciseVariants.userId, userId),
+          isNull(exerciseVariants.archivedAt)
         ),
         with: { category: true },
       })
     : []
   const variants = new Map(
-    found.map((variant) => [variant.id, variant as Variant])
+    found
+      .filter(
+        (variant) =>
+          variant.archivedAt === null && variant.category.archivedAt === null
+      )
+      .map((variant) => [variant.id, variant as Variant])
   )
   entries.forEach((entry, index) => {
     if (!variants.has(entry.variantId))
@@ -285,73 +289,10 @@ export async function createWorkoutFromTemplate(
   },
   now = new Date()
 ): Promise<WorkoutMutationResult<WorkoutDetail>> {
-  const template = await db.query.workoutTemplates.findFirst({
-    where: and(
-      eq(workoutTemplates.id, input.templateId),
-      eq(workoutTemplates.userId, userId)
-    ),
-    with: {
-      exercises: {
-        orderBy: [asc(workoutTemplateExercises.position)],
-        with: { variant: { with: { category: true } } },
-      },
-    },
-  })
-  if (!template) return { ok: false, error: "not_found" }
-  if (template.exercises.length === 0)
-    return {
-      ok: false,
-      error: "template_ineligible",
-      message: "Add at least one exercise before starting this template.",
-    }
-  const archived = template.exercises.find(
-    (entry) =>
-      entry.variant.archivedAt !== null ||
-      entry.variant.category.archivedAt !== null
-  )
-  if (archived)
-    return {
-      ok: false,
-      error: "template_ineligible",
-      message: `“${archived.variant.name}” is archived. Replace or restore it before starting this template.`,
-    }
-  if (
-    !Array.isArray(input.exercises) ||
-    input.exercises.length !== template.exercises.length
-  )
-    return {
-      ok: false,
-      error: "validation",
-      fieldErrors: { exercises: "Complete every exercise from the template." },
-    }
-  const exercises = template.exercises.map((entry, index) => ({
-    variantId: entry.variantId,
-    notes: (input.exercises as Array<{ notes?: unknown }>)[index]?.notes,
-    sets: (input.exercises as Array<{ sets?: unknown }>)[index]?.sets,
-  }))
-  const wrongCount = exercises.findIndex(
-    (exercise, index) =>
-      !Array.isArray(exercise.sets) ||
-      exercise.sets.length !== template.exercises[index].setCount
-  )
-  if (wrongCount >= 0)
-    return {
-      ok: false,
-      error: "validation",
-      fieldErrors: {
-        exercises: {
-          [wrongCount]: {
-            sets: `Enter reps for all ${template.exercises[wrongCount].setCount} sets.`,
-          },
-        },
-      },
-    }
-  return createWorkout(
-    db,
-    userId,
-    { ...input, name: input.name ?? template.name, exercises },
-    now
-  )
+  // Eligibility is checked when the template is selected. From that point on,
+  // the submitted editor state is an independent draft: the source template
+  // may be edited or deleted without changing which performance data is saved.
+  return createWorkout(db, userId, input, now)
 }
 
 export async function updateWorkout(

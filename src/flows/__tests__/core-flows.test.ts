@@ -83,7 +83,12 @@ describe("workout domain orchestration with an in-memory Drizzle fake", () => {
       {
         templateId: template.value.id,
         workoutDate: "2030-02-03",
-        exercises: [{ sets: [8, 7] }, { sets: [5] }, { sets: [6] }],
+        name: "Pull strength",
+        exercises: [
+          { variantId: variants[0].id, sets: [8, 7] },
+          { variantId: variants[1].id, sets: [5] },
+          { variantId: variants[0].id, sets: [6] },
+        ],
       },
       at(5)
     )
@@ -217,12 +222,14 @@ describe("workout domain orchestration with an in-memory Drizzle fake", () => {
       createWorkoutFromTemplate(db, owner, {
         templateId: template.value.id,
         workoutDate: "2030-02-03",
-        exercises: [{ sets: [8] }, { sets: [5] }],
+        exercises: [
+          { variantId: variants[0].id, sets: [8] },
+          { variantId: variants[1].id, sets: [5] },
+        ],
       })
     ).resolves.toMatchObject({
       ok: false,
-      error: "template_ineligible",
-      message: expect.stringContaining("Ring row"),
+      error: "validation",
     })
 
     const updated = await updateWorkoutTemplate(db, owner, {
@@ -235,7 +242,7 @@ describe("workout domain orchestration with an in-memory Drizzle fake", () => {
       createWorkoutFromTemplate(db, owner, {
         templateId: template.value.id,
         workoutDate: "2030-02-03",
-        exercises: [{ sets: [5] }],
+        exercises: [{ variantId: variants[1].id, sets: [5] }],
       })
     ).resolves.toMatchObject({ ok: true })
   })
@@ -328,7 +335,11 @@ describe("workout domain orchestration with an in-memory Drizzle fake", () => {
     const logged = await createWorkoutFromTemplate(db, owner, {
       templateId: template.value.id,
       workoutDate: "2030-02-03",
-      exercises: [{ sets: [8] }, { sets: [4] }],
+      name: "Original",
+      exercises: [
+        { variantId: variants[0].id, sets: [8] },
+        { variantId: variants[1].id, sets: [4] },
+      ],
     })
     expect(logged.ok).toBe(true)
     if (!logged.ok) throw new Error("fixture workout failed")
@@ -449,7 +460,7 @@ describe("workout domain orchestration with an in-memory Drizzle fake", () => {
         workoutDate: "2030-03-04",
         exercises: [],
       })
-    ).resolves.toMatchObject({ ok: false, error: "template_ineligible" })
+    ).resolves.toMatchObject({ ok: false, error: "validation" })
   })
 
   it("keeps workouts, templates, and exercise categories owner-scoped", async () => {
