@@ -114,9 +114,171 @@ async function selectExercise(name: string) {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  window.localStorage.clear()
 })
 
 describe("RecordManager", () => {
+  it("offers an explicit resume for a saved draft and keeps its request id", async () => {
+    window.localStorage.setItem(
+      "form.workout-draft",
+      JSON.stringify({
+        version: 1,
+        requestId: "stable-request",
+        savedAt: Date.now(),
+        origin: "repeat",
+        editor: {
+          date: "2026-08-18",
+          name: "Repeated push",
+          notes: "keep me",
+          rows: [
+            {
+              key: "first",
+              variantId: "push-up",
+              variantName: "Push-up",
+              categoryName: "Push",
+              notes: "first note",
+              initialCue: { workoutDate: "2026-08-17", reps: [8] },
+              sets: [{ key: "first-set", reps: "9" }],
+            },
+            {
+              key: "second",
+              variantId: "push-up",
+              variantName: "Push-up",
+              categoryName: "Push",
+              notes: "second note",
+              sets: [{ key: "second-set", reps: "7" }],
+            },
+          ],
+        },
+      })
+    )
+    render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+    fireEvent.click(
+      await screen.findByRole("button", { name: /resume workout/i })
+    )
+    expect(screen.getAllByRole("heading", { name: "Push-up" })).toHaveLength(2)
+    expect(screen.getByLabelText("General notes (optional)")).toHaveValue(
+      "keep me"
+    )
+    fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
+    await waitFor(() => expect(workouts.createWorkout).toHaveBeenCalledOnce())
+    expect(workouts.createWorkout.mock.calls[0][0].data.clientRequestId).toBe(
+      "stable-request"
+    )
+  })
+
+  it("confirms before replacing a recovered draft and only replaces after confirmation", async () => {
+    window.localStorage.setItem(
+      "form.workout-draft",
+      JSON.stringify({
+        version: 1,
+        requestId: "existing-request",
+        savedAt: Date.now(),
+        origin: "blank",
+        editor: { date: "2026-08-18", name: "Keep me", notes: "", rows: [] },
+      })
+    )
+    render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+
+    fireEvent.click(await screen.findByRole("button", { name: /start blank/i }))
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "Replace saved workout draft?"
+    )
+    fireEvent.click(screen.getByRole("button", { name: /keep draft/i }))
+    expect(
+      JSON.parse(window.localStorage.getItem("form.workout-draft")!)
+    ).toMatchObject({
+      requestId: "existing-request",
+      editor: { name: "Keep me" },
+    })
+
+    fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
+    fireEvent.click(screen.getByRole("button", { name: /replace draft/i }))
+    expect(
+      JSON.parse(window.localStorage.getItem("form.workout-draft")!)
+    ).toMatchObject({
+      origin: "blank",
+    })
+    expect(
+      screen.getByRole("button", { name: /save workout/i })
+    ).toBeInTheDocument()
+  })
+
+  it("retains an unavailable recovered row, disables it, and blocks saving", async () => {
+    window.localStorage.setItem(
+      "form.workout-draft",
+      JSON.stringify({
+        version: 1,
+        requestId: "unavailable-request",
+        savedAt: Date.now(),
+        origin: "template",
+        editor: {
+          date: "2026-08-18",
+          name: "Old template",
+          notes: "",
+          rows: [
+            {
+              key: "old-row",
+              variantId: "missing",
+              variantName: "Missing exercise",
+              categoryName: "Old",
+              notes: "keep this",
+              sets: [{ key: "old-set", reps: "8" }],
+            },
+          ],
+        },
+      })
+    )
+    render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+    fireEvent.click(
+      await screen.findByRole("button", { name: /resume workout/i })
+    )
+    expect(
+      screen.getByRole("heading", { name: "Missing exercise" })
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/set 1 reps/i)).toBeDisabled()
+    fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Remove unavailable exercises"
+    )
+    expect(workouts.createWorkout).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem("form.workout-draft")).not.toBeNull()
+  })
+
+  it("retains the draft while a save is in flight and submits a rapid double activation once", async () => {
+    let resolveCreate:
+      | ((value: { ok: true; value: { id: string } }) => void)
+      | undefined
+    workouts.createWorkout.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve
+        })
+    )
+    render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
+    fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
+    await selectExercise("Push-up")
+    fireEvent.click(screen.getByRole("button", { name: /add exercise/i }))
+    fireEvent.change(screen.getByLabelText(/set 1 reps/i), {
+      target: { value: "8" },
+    })
+    const save = screen.getByRole("button", { name: /save workout/i })
+    fireEvent.click(save)
+    fireEvent.click(save)
+    expect(workouts.createWorkout).toHaveBeenCalledOnce()
+    const requestId =
+      workouts.createWorkout.mock.calls[0][0].data.clientRequestId
+    expect(
+      JSON.parse(window.localStorage.getItem("form.workout-draft")!)
+    ).toMatchObject({
+      requestId,
+    })
+    resolveCreate?.({ ok: true, value: { id: "saved" } })
+    await waitFor(() =>
+      expect(window.localStorage.getItem("form.workout-draft")).toBeNull()
+    )
+  })
+
   it("keeps the run entry visible without an exercise library", () => {
     render(<RecordManager initialTemplates={[]} initialLibrary={[]} />)
     expect(screen.getByRole("link", { name: /record a run/i })).toHaveAttribute(
@@ -256,6 +418,7 @@ describe("RecordManager", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("couldn’t save")
     )
+    expect(window.localStorage.getItem("form.workout-draft")).not.toBeNull()
     fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
     await waitFor(() =>
       expect(
@@ -308,14 +471,15 @@ describe("RecordManager", () => {
     fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
     await waitFor(() => expect(workouts.createWorkout).toHaveBeenCalledOnce())
     expect(workouts.createWorkout).toHaveBeenCalledWith({
-      data: {
+      data: expect.objectContaining({
+        clientRequestId: expect.any(String),
         workoutDate: "2026-08-18",
         name: "Back day",
         notes: "Felt strong",
         exercises: [
           { variantId: "push-up", notes: "Slow negatives", sets: ["8"] },
         ],
-      },
+      }),
     })
   })
 
@@ -374,29 +538,25 @@ describe("RecordManager", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
     render(<RecordManager initialTemplates={[]} initialLibrary={library} />)
     fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
-    // A clean form discards without a prompt.
-    fireEvent.click(screen.getByRole("button", { name: /discard/i }))
+    // New drafts require an accessible explicit confirmation, even when clean.
+    fireEvent.click(screen.getByRole("button", { name: /^discard$/i }))
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "Discard workout draft?"
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Discard draft" }))
     expect(confirm).not.toHaveBeenCalled()
     expect(
       screen.getByRole("button", { name: /start blank/i })
     ).toBeInTheDocument()
-    // A dirty form prompts; cancelling keeps the editor open.
+    // A dirty draft remains open when its confirmation is cancelled.
     fireEvent.click(screen.getByRole("button", { name: /start blank/i }))
     fireEvent.change(screen.getByLabelText("Workout name (optional)"), {
       target: { value: "x" },
     })
-    fireEvent.click(screen.getByRole("button", { name: /discard/i }))
-    expect(confirm).toHaveBeenCalledWith(
-      "Discard your unsaved workout changes?"
-    )
+    fireEvent.click(screen.getByRole("button", { name: /^discard$/i }))
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
     expect(
       screen.getByRole("button", { name: /save workout/i })
-    ).toBeInTheDocument()
-    // Confirming discards and returns to the start screen.
-    confirm.mockReturnValue(true)
-    fireEvent.click(screen.getByRole("button", { name: /discard/i }))
-    expect(
-      screen.getByRole("button", { name: /start blank/i })
     ).toBeInTheDocument()
   })
 

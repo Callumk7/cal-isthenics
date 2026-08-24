@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useState } from "react"
+import { useEffect, useEffectEvent, useRef, useState } from "react"
 import type { FormEvent } from "react"
 import {
   ChevronDownIcon,
@@ -46,8 +46,8 @@ import {
 
 const repsError = "Enter a positive whole number of reps."
 const key = () => crypto.randomUUID()
-type SetRow = { key: string; reps: string }
-type ExerciseRow = {
+export type SetRow = { key: string; reps: string }
+export type ExerciseRow = {
   key: string
   variantId: string
   variantName: string
@@ -56,6 +56,8 @@ type ExerciseRow = {
   sets: SetRow[]
   /** A repeat source's instance-specific performance is never editable. */
   initialCue?: { workoutDate: string; reps: number[] }
+  /** Set only for restored new-workout drafts whose library reference vanished. */
+  unavailable?: boolean
 }
 export type Editor = {
   templateId?: string
@@ -71,12 +73,17 @@ export function WorkoutEditor({
   onDiscard,
   onSaved,
   workoutId,
+  draftId,
+  onDraftChange,
 }: {
   editor: Editor
   library: ActiveCategory[]
   onDiscard: () => void
   onSaved: (id: string) => void
   workoutId?: string
+  /** New-workout draft integration; absent for completed-workout edits. */
+  draftId?: string
+  onDraftChange?: (editor: Editor) => void
 }) {
   const [form, setForm] = useState(editor)
   const [selected, setSelected] = useState("")
@@ -84,11 +91,13 @@ export function WorkoutEditor({
   const [saveError, setSaveError] = useState("")
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
   const [cues, setCues] = useState<
     Record<string, PreviousPerformanceCue["cue"]>
   >({})
   const [cuesLoading, setCuesLoading] = useState(false)
   const [cuesError, setCuesError] = useState(false)
+  const createInFlight = useRef(false)
   const pickerGroups = getExercisePickerGroups(library)
   const variants = pickerGroups.flatMap((group) =>
     group.variants.map((variant) => ({
@@ -109,9 +118,15 @@ export function WorkoutEditor({
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
   }, [])
-  const cueRequest = `${form.date}:${form.rows.map((row) => row.variantId).join(",")}`
+  const cueRequest = `${form.date}:${form.rows
+    .filter((row) => !row.unavailable)
+    .map((row) => row.variantId)
+    .join(",")}`
   async function loadCues() {
-    const variantIds = form.rows.map((row) => row.variantId).filter(Boolean)
+    const variantIds = form.rows
+      .filter((row) => !row.unavailable)
+      .map((row) => row.variantId)
+      .filter(Boolean)
     if (!variantIds.length || !form.date) {
       setCues({})
       setCuesError(false)
@@ -142,6 +157,7 @@ export function WorkoutEditor({
   const changed = (next: Editor) => {
     setDirty(true)
     setForm(next)
+    if (!workoutId) onDraftChange?.(next)
   }
   function addExercise() {
     const variant = variants.find((item) => item.id === selected)
@@ -171,6 +187,13 @@ export function WorkoutEditor({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const errors: Record<string, string> = {}
+    if (!workoutId && form.rows.some((row) => row.unavailable)) {
+      setSaveError(
+        "Remove unavailable exercises before saving this recovered workout."
+      )
+      return
+    }
+    if (createInFlight.current) return
     const savableRows = form.rows.filter((row) => row.variantId)
     savableRows.forEach((row) =>
       row.sets.forEach((set) => {
@@ -192,6 +215,7 @@ export function WorkoutEditor({
     }
     if (Object.keys(errors).length) return
     setSaving(true)
+    createInFlight.current = !workoutId
     setSaveError("")
     try {
       const payload = {
@@ -208,9 +232,15 @@ export function WorkoutEditor({
         ? await updateWorkout({ data: { ...payload, id: workoutId } })
         : form.templateId
           ? await createWorkoutFromTemplate({
-              data: { ...payload, templateId: form.templateId },
+              data: {
+                ...payload,
+                templateId: form.templateId,
+                clientRequestId: draftId,
+              },
             })
-          : await createWorkout({ data: payload })
+          : await createWorkout({
+              data: { ...payload, clientRequestId: draftId },
+            })
       if (!result.ok) {
         const fieldErrors = result.fieldErrors?.exercises
         if (Array.isArray(fieldErrors)) {
@@ -242,6 +272,7 @@ export function WorkoutEditor({
         "We couldn’t save your workout. Check your connection and try again."
       )
     } finally {
+      createInFlight.current = false
       setSaving(false)
     }
   }
@@ -259,6 +290,10 @@ export function WorkoutEditor({
         <Button
           variant="ghost"
           onPress={() => {
+            if (!workoutId) {
+              setDiscardOpen(true)
+              return
+            }
             if (
               dirty &&
               !window.confirm("Discard your unsaved workout changes?")
@@ -344,10 +379,11 @@ export function WorkoutEditor({
                   <p className="text-xs text-muted-foreground">
                     {row.categoryName}
                   </p>
-                  {!row.variantId && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      The original exercise is no longer available. This row is
-                      read-only and will be removed when saved.
+                  {(!row.variantId || row.unavailable) && (
+                    <p className="mt-1 text-xs text-destructive">
+                      {!row.variantId
+                        ? "The original exercise is no longer available. This row is read-only and will be removed when saved."
+                        : "This exercise is no longer active in your library. It is retained from the recovered draft; remove it before saving."}
                     </p>
                   )}
                   <PerformanceCue
@@ -360,7 +396,7 @@ export function WorkoutEditor({
                     </FieldLabel>
                     <Textarea
                       id={`notes-${row.key}`}
-                      disabled={!row.variantId}
+                      disabled={!row.variantId || row.unavailable}
                       value={row.notes}
                       onChange={(e) =>
                         changed({
@@ -390,7 +426,7 @@ export function WorkoutEditor({
                             type="text"
                             inputMode="numeric"
                             value={set.reps}
-                            disabled={!row.variantId}
+                            disabled={!row.variantId || row.unavailable}
                             aria-invalid={Boolean(setErrors[set.key])}
                             onChange={(e) => {
                               changed({
@@ -446,7 +482,7 @@ export function WorkoutEditor({
                     type="button"
                     variant="outline"
                     className="mt-3 h-11"
-                    isDisabled={!row.variantId}
+                    isDisabled={!row.variantId || row.unavailable}
                     onPress={() =>
                       changed({
                         ...form,
@@ -535,6 +571,30 @@ export function WorkoutEditor({
           {saving ? "Saving…" : "Save workout"}
         </Button>
       </form>
+      {!workoutId && (
+        <AlertDialogContent
+          isOpen={discardOpen}
+          onOpenChange={setDiscardOpen}
+          isDismissable={!saving}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard workout draft?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your unsaved workout draft will be permanently discarded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel isDisabled={saving}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              isDisabled={saving}
+              onPress={onDiscard}
+            >
+              Discard draft
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      )}
     </main>
   )
 }
