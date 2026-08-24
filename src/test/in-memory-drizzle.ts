@@ -136,6 +136,7 @@ function matchesChunks(row: Row, value: unknown[]): boolean {
   const params = all
     .filter((chunk): chunk is Param => chunk instanceof Param)
     .map((param) => param.value)
+  if (expression.includes(" is not null")) return valueAtColumn !== null
   if (expression.includes(" is null")) return valueAtColumn === null
   if (expression.includes(" in ")) return params.includes(valueAtColumn)
   if (expression.includes(">=")) return compare(valueAtColumn, params[0]) >= 0

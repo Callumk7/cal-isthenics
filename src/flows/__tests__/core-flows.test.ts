@@ -7,6 +7,8 @@ import {
   createExerciseVariant,
   getActiveExerciseLibrary,
   getExerciseManagementLibrary,
+  restoreExerciseCategory,
+  restoreExerciseVariant,
 } from "@/exercises/library"
 import { createInMemoryDrizzle } from "@/test/in-memory-drizzle"
 import {
@@ -191,6 +193,57 @@ describe("workout domain orchestration with an in-memory Drizzle fake", () => {
     await expect(
       listWorkoutTemplateSummaries(db, owner)
     ).resolves.toMatchObject([{ name: "Rows", canStart: true }])
+  })
+
+  it("restores an archived variant to pickers and re-enables its template", async () => {
+    const { variants } = await categoryAndVariants()
+    const template = await createWorkoutTemplate(db, owner, {
+      name: "Restorable rows",
+      exercises: [{ variantId: variants[0].id, setCount: 2 }],
+    })
+    expect(template.ok).toBe(true)
+
+    await archiveExerciseVariant(db, owner, variants[0].id, at(5))
+    await expect(
+      listWorkoutTemplateSummaries(db, owner)
+    ).resolves.toMatchObject([{ name: "Restorable rows", canStart: false }])
+    await expect(getActiveExerciseLibrary(db, owner)).resolves.toMatchObject([
+      { variants: [{ id: variants[1].id }] },
+    ])
+
+    await expect(
+      restoreExerciseVariant(db, owner, variants[0].id, at(6))
+    ).resolves.toMatchObject({ ok: true, value: { archivedAt: null } })
+    const activeLibrary = await getActiveExerciseLibrary(db, owner)
+    expect(activeLibrary[0]?.variants).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: variants[0].id })])
+    )
+    await expect(
+      listWorkoutTemplateSummaries(db, owner)
+    ).resolves.toMatchObject([{ name: "Restorable rows", canStart: true }])
+  })
+
+  it("restores a category without reviving individually archived variants", async () => {
+    const { category, variants } = await categoryAndVariants()
+    await archiveExerciseVariant(db, owner, variants[1].id, at(5))
+    await archiveExerciseCategory(db, owner, category.id, at(6))
+
+    await expect(
+      restoreExerciseCategory(db, owner, category.id, at(7))
+    ).resolves.toMatchObject({ ok: true, value: { archivedAt: null } })
+    await expect(getActiveExerciseLibrary(db, owner)).resolves.toMatchObject([
+      { variants: [{ id: variants[0].id }] },
+    ])
+    const managedLibrary = await getExerciseManagementLibrary(db, owner)
+    expect(managedLibrary[0]).toMatchObject({ archivedAt: null })
+    expect(managedLibrary[0]?.variants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: variants[1].id,
+          archivedAt: expect.any(Date),
+        }),
+      ])
+    )
   })
 
   it("retains archived template rows and blocks starting until they are removed", async () => {

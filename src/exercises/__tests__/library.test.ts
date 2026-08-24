@@ -11,6 +11,8 @@ import {
   getExerciseVariantReference,
   parseDifficultyMultiplier,
   renameExerciseCategory,
+  restoreExerciseCategory,
+  restoreExerciseVariant,
 } from "../library"
 
 function insertDatabase() {
@@ -182,6 +184,33 @@ describe("exercise library domain operations", () => {
     expect(variantArchive.set).toHaveBeenCalledWith(
       expect.objectContaining({ archivedAt: expect.any(Date) })
     )
+  })
+
+  it("restores only archived owned records and leaves category variants untouched", async () => {
+    const category = { id: "category", userId: "owner", archivedAt: null }
+    const variant = { id: "variant", userId: "owner", archivedAt: null }
+    const categoryRestore = updateDatabase(category)
+    const variantRestore = updateDatabase(variant)
+    const missing = updateDatabase(undefined)
+
+    await expect(
+      restoreExerciseCategory(categoryRestore.db, "owner", "category")
+    ).resolves.toMatchObject({ ok: true, value: { archivedAt: null } })
+    await expect(
+      restoreExerciseVariant(variantRestore.db, "owner", "variant")
+    ).resolves.toMatchObject({ ok: true, value: { archivedAt: null } })
+    await expect(
+      restoreExerciseVariant(missing.db, "other-user", "foreign")
+    ).resolves.toEqual({ ok: false, error: "not_found" })
+
+    expect(categoryRestore.set).toHaveBeenCalledWith(
+      expect.objectContaining({ archivedAt: null })
+    )
+    expect(variantRestore.set).toHaveBeenCalledWith(
+      expect.objectContaining({ archivedAt: null })
+    )
+    // Category restoration writes only its own archive timestamp; it never
+    // clears timestamps on individually archived variants.
   })
 
   it("returns not_found for identifiers outside the user's mutation scope", async () => {

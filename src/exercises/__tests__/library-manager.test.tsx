@@ -8,6 +8,8 @@ const api = vi.hoisted(() => ({
   addExerciseVariant: vi.fn(),
   removeExerciseCategory: vi.fn(),
   removeExerciseVariant: vi.fn(),
+  restoreExerciseCategory: vi.fn(),
+  restoreExerciseVariant: vi.fn(),
   updateExerciseCategory: vi.fn(),
   updateExerciseVariant: vi.fn(),
 }))
@@ -118,17 +120,83 @@ describe("ExerciseLibraryManager", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("renders archived categories without restoration controls", () => {
+  it("restores an archived category without restoring individually archived variants", async () => {
+    const individuallyArchived = {
+      ...category.variants[0],
+      archivedAt: "2026-08-16",
+    }
+    api.restoreExerciseCategory.mockResolvedValue({ ok: true, value: {} })
+    const onLibraryChanged = vi.fn()
     render(
       <ExerciseLibraryManager
-        initialCategories={[{ ...category, archivedAt: "2026-08-17" }]}
+        onLibraryChanged={onLibraryChanged}
+        initialCategories={[
+          {
+            ...category,
+            archivedAt: "2026-08-17",
+            variants: [individuallyArchived],
+          },
+        ]}
       />
     )
-    expect(screen.getAllByText("Archived")).toHaveLength(2)
+
+    expect(screen.getByText("Restore the category first.")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Restore Pull-up" }))
+
+    await waitFor(() =>
+      expect(api.restoreExerciseCategory).toHaveBeenCalledWith({
+        data: { id: "category-1" },
+      })
+    )
+    expect(screen.getByRole("status")).toHaveTextContent("Pull-up restored.")
+    expect(onLibraryChanged).toHaveBeenCalledOnce()
+    // The category is active, but the variant is still individually archived
+    // and can now be restored explicitly.
     expect(
-      screen.queryByRole("button", { name: /Edit Pull-up/ })
-    ).not.toBeInTheDocument()
-    expect(screen.queryByText("Restore")).not.toBeInTheDocument()
+      screen.getByRole("button", { name: "Restore Band assisted" })
+    ).toBeInTheDocument()
+    expect(screen.getByText("Archived")).toBeInTheDocument()
+  })
+
+  it("keeps restore accessible after a failed request so it can be retried", async () => {
+    api.restoreExerciseVariant
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ ok: true, value: {} })
+    render(
+      <ExerciseLibraryManager
+        initialCategories={[
+          {
+            ...category,
+            variants: [{ ...category.variants[0], archivedAt: "2026-08-17" }],
+          },
+        ]}
+      />
+    )
+
+    const restoreButton = screen.getByRole("button", {
+      name: "Restore Band assisted",
+    })
+    expect(restoreButton).toHaveClass("h-11")
+    fireEvent.click(restoreButton)
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "could not be restored"
+    )
+    expect(
+      screen.getByRole("button", { name: "Restore Band assisted" })
+    ).toBeEnabled()
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Restore Band assisted" })
+    )
+    await waitFor(() =>
+      expect(api.restoreExerciseVariant).toHaveBeenCalledTimes(2)
+    )
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Band assisted restored."
+    )
+    expect(
+      screen.getByRole("button", { name: "Archive Band assisted" })
+    ).toBeInTheDocument()
   })
 
   it("announces a failed save and keeps the editor open", async () => {
