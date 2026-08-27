@@ -18,6 +18,7 @@ import type {
   WorkoutTemplateDetail,
   WorkoutTemplateSummary,
 } from "@/templates/templates"
+import { listRunningWorkouts } from "@/running/server-functions"
 import type { RunningWorkout } from "@/running/running-workouts"
 import { readWorkoutTemplate } from "@/templates/server-functions"
 import { listWorkouts, prepareRepeatWorkout } from "@/workouts/server-functions"
@@ -59,12 +60,16 @@ export function RecordManager({
   initialTemplates,
   initialLibrary,
   initialWorkouts = [],
+  initialWorkoutsFailed = false,
   initialRuns = [],
+  initialRunsFailed = false,
 }: {
   initialTemplates: WorkoutTemplateSummary[]
   initialLibrary: ActiveCategory[]
   initialWorkouts?: SavedWorkout[]
+  initialWorkoutsFailed?: boolean
   initialRuns?: RunningWorkout[]
+  initialRunsFailed?: boolean
 }) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [loadingTemplate, setLoadingTemplate] = useState<string | null>(null)
@@ -72,6 +77,11 @@ export function RecordManager({
   const [savedId, setSavedId] = useState<string | null>(null)
   const [date, setDate] = useState("")
   const [workouts, setWorkouts] = useState(initialWorkouts)
+  const [workoutsError, setWorkoutsError] = useState(initialWorkoutsFailed)
+  const [workoutsLoading, setWorkoutsLoading] = useState(false)
+  const [runs, setRuns] = useState(initialRuns)
+  const [runsError, setRunsError] = useState(initialRunsFailed)
+  const [runsLoading, setRunsLoading] = useState(false)
   const [repeating, setRepeating] = useState<string | null>(null)
   const [repeatError, setRepeatError] = useState("")
   const [recoveredDraft, setRecoveredDraft] = useState<WorkoutDraft | null>(
@@ -202,6 +212,8 @@ export function RecordManager({
   }
   async function filterWorkouts(value: string) {
     setDate(value)
+    setWorkoutsLoading(true)
+    setWorkoutsError(false)
     try {
       // A date filter must show every workout on that day, not just the
       // default recent-list limit of 20.
@@ -211,10 +223,14 @@ export function RecordManager({
         })
       )
     } catch {
-      setAnnouncement("We couldn’t load saved workouts. Please try again.")
+      setWorkoutsError(true)
+    } finally {
+      setWorkoutsLoading(false)
     }
   }
   async function refreshWorkouts() {
+    setWorkoutsLoading(true)
+    setWorkoutsError(false)
     try {
       setWorkouts(
         await listWorkouts({ data: date ? { from: date, to: date } : {} })
@@ -222,6 +238,22 @@ export function RecordManager({
     } catch {
       // The saved workout is still reachable from the success screen; the
       // discovery list refreshes itself on the next visit or filter change.
+      setWorkoutsError(true)
+    } finally {
+      setWorkoutsLoading(false)
+    }
+  }
+  async function refreshRuns() {
+    setRunsLoading(true)
+    setRunsError(false)
+    try {
+      const result = await listRunningWorkouts()
+      if (!result.ok) throw new Error("unable to load runs")
+      setRuns(result.value)
+    } catch {
+      setRunsError(true)
+    } finally {
+      setRunsLoading(false)
     }
   }
   if (savedId)
@@ -268,7 +300,7 @@ export function RecordManager({
       />
     )
   return (
-    <main className="mx-auto w-full max-w-3xl p-4 md:p-8">
+    <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
       <header className="mb-6">
         <p className="mb-1 text-xs font-medium tracking-widest text-primary uppercase">
           Training log
@@ -280,9 +312,11 @@ export function RecordManager({
           Log a completed workout in just a few taps.
         </p>
       </header>
-      <p className="sr-only" role="status" aria-live="polite">
-        {announcement}
-      </p>
+      {announcement && (
+        <p className="sr-only" role="status" aria-live="polite">
+          {announcement}
+        </p>
+      )}
       {recoveredDraft && (
         <section
           className="mb-6 border border-primary/30 bg-primary/5 p-4"
@@ -428,8 +462,26 @@ export function RecordManager({
             />
           </label>
         </div>
+        {workoutsError && (
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
+            We couldn’t load saved workouts.{" "}
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0"
+              isDisabled={workoutsLoading}
+              onPress={() => void refreshWorkouts()}
+            >
+              Retry
+            </Button>
+          </p>
+        )}
         <div className="mt-3 space-y-2">
-          {workouts.length === 0 ? (
+          {workoutsLoading ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Loading saved workouts…
+            </p>
+          ) : workouts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No saved workouts found.
             </p>
@@ -542,11 +594,29 @@ export function RecordManager({
         <p className="text-sm text-muted-foreground">
           Review or update a saved running workout.
         </p>
+        {runsError && (
+          <p role="status" className="mt-3 text-sm text-muted-foreground">
+            We couldn’t load saved runs.{" "}
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0"
+              isDisabled={runsLoading}
+              onPress={() => void refreshRuns()}
+            >
+              Retry
+            </Button>
+          </p>
+        )}
         <div className="mt-3 space-y-2">
-          {initialRuns.length === 0 ? (
+          {runsLoading ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Loading saved runs…
+            </p>
+          ) : runs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No saved runs yet.</p>
           ) : (
-            initialRuns.map((run) => (
+            runs.map((run) => (
               <LinkButton
                 key={run.id}
                 variant="outline"
@@ -569,6 +639,6 @@ export function RecordManager({
           )}
         </div>
       </section>
-    </main>
+    </div>
   )
 }
