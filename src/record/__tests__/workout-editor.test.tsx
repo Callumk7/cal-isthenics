@@ -397,6 +397,71 @@ describe("WorkoutEditor (edit mode)", () => {
     ).toBe(false)
   })
 
+  it("maps server validation errors to controls and focuses the first invalid field", async () => {
+    workouts.updateWorkout.mockResolvedValue({
+      ok: false,
+      error: "validation",
+      message: "Fix the highlighted fields.",
+      fieldErrors: {
+        workoutDate: "Enter a valid calendar date.",
+        name: "Name is too long.",
+        notes: "Notes are too long.",
+        exercises: [
+          { notes: "Exercise notes are too long.", sets: ["Enter reps."] },
+        ],
+      },
+    })
+    render(
+      <WorkoutEditor
+        editor={editorFromWorkout(
+          workoutWith([
+            {
+              sourceVariantId: "push-up",
+              variantName: "Push-up",
+              categoryName: "Push",
+              notes: "",
+              reps: [8],
+            },
+          ])
+        )}
+        library={library}
+        workoutId="workout-1"
+        onDiscard={() => {}}
+        onSaved={() => {}}
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: /save workout/i }))
+    await waitFor(() =>
+      expect(screen.getByLabelText("Date")).toHaveAttribute(
+        "aria-invalid",
+        "true"
+      )
+    )
+    expect(screen.getByLabelText("Workout name (optional)")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    )
+    expect(screen.getByLabelText("General notes (optional)")).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    )
+    expect(screen.getByLabelText(/exercise notes/i)).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    )
+    expect(screen.getByLabelText(/set 1 reps/i)).toHaveAttribute(
+      "aria-invalid",
+      "true"
+    )
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText("Date"))
+    )
+    expect(screen.getByText("Fix the highlighted fields.")).toHaveAttribute(
+      "role",
+      "alert"
+    )
+  })
+
   it("keeps the form and shows a recoverable error when an update fails", async () => {
     workouts.updateWorkout.mockResolvedValue({
       ok: false,

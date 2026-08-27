@@ -38,12 +38,33 @@ describe("record index route", () => {
       templates: [{ id: "template" }],
       library: [{ id: "category" }],
       workouts: [],
+      workoutsFailed: false,
       runs: [],
+      runsFailed: false,
     })
     expect(mocks.listWorkoutTemplateSummaries).toHaveBeenCalledOnce()
     expect(mocks.listActiveExercises).toHaveBeenCalledOnce()
     expect(mocks.listWorkouts).toHaveBeenCalledOnce()
     expect(mocks.listRunningWorkouts).toHaveBeenCalledOnce()
+  })
+
+  it("keeps starter data available when either discovery request fails", async () => {
+    mocks.listWorkoutTemplateSummaries.mockResolvedValue([{ id: "template" }])
+    mocks.listActiveExercises.mockResolvedValue([{ id: "category" }])
+    mocks.listWorkouts.mockRejectedValue(new Error("offline"))
+    mocks.listRunningWorkouts.mockRejectedValue(new Error("offline"))
+
+    const loader = Route.options.loader as (
+      context: unknown
+    ) => Promise<unknown>
+    await expect(loader({})).resolves.toEqual({
+      templates: [{ id: "template" }],
+      library: [{ id: "category" }],
+      workouts: [],
+      workoutsFailed: true,
+      runs: [],
+      runsFailed: true,
+    })
   })
 
   it("renders loading and load-error feedback", () => {

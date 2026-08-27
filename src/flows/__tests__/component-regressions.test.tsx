@@ -99,8 +99,12 @@ describe("component accessibility and markup regression guards", () => {
       />
     )
 
-    const main = screen.getByRole("main")
-    expect(main).toHaveClass("w-full", "max-w-3xl")
+    // The authenticated app shell owns the sole page-level main landmark.
+    expect(screen.queryByRole("main")).toBeNull()
+    const container = screen
+      .getByRole("heading", { name: "Record a workout" })
+      .closest("div")
+    expect(container).toHaveClass("w-full", "max-w-3xl")
     expect(screen.getByRole("heading", { name: longName })).toHaveClass(
       "break-words"
     )

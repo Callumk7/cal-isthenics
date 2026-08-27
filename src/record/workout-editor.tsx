@@ -88,7 +88,9 @@ export function WorkoutEditor({
   const [form, setForm] = useState(editor)
   const [selected, setSelected] = useState("")
   const [setErrors, setSetErrors] = useState<Record<string, string>>({})
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [saveError, setSaveError] = useState("")
+  const [announcement, setAnnouncement] = useState("")
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
@@ -98,6 +100,7 @@ export function WorkoutEditor({
   const [cuesLoading, setCuesLoading] = useState(false)
   const [cuesError, setCuesError] = useState(false)
   const createInFlight = useRef(false)
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({})
   const pickerGroups = getExercisePickerGroups(library)
   const variants = pickerGroups.flatMap((group) =>
     group.variants.map((variant) => ({
@@ -159,6 +162,10 @@ export function WorkoutEditor({
     setForm(next)
     if (!workoutId) onDraftChange?.(next)
   }
+  const focus = (id: string) => {
+    requestAnimationFrame(() => fieldRefs.current[id]?.focus())
+  }
+  const announce = (message: string) => setAnnouncement(message)
   function addExercise() {
     const variant = variants.find((item) => item.id === selected)
     if (!variant) return
@@ -177,16 +184,21 @@ export function WorkoutEditor({
       ],
     })
     setSelected("")
+    announce(`${variant.name} added. Enter reps for set 1.`)
   }
   function move(index: number, direction: number) {
     const rows = [...form.rows]
     const target = index + direction
     ;[rows[index], rows[target]] = [rows[target], rows[index]]
     changed({ ...form, rows })
+    announce(
+      `${form.rows[index].variantName} moved ${direction < 0 ? "up" : "down"}.`
+    )
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const errors: Record<string, string> = {}
+    setFieldErrors({})
     if (!workoutId && form.rows.some((row) => row.unavailable)) {
       setSaveError(
         "Remove unavailable exercises before saving this recovered workout."
@@ -213,7 +225,10 @@ export function WorkoutEditor({
       setSaveError("Add at least one set for every exercise.")
       return
     }
-    if (Object.keys(errors).length) return
+    if (Object.keys(errors).length) {
+      focus(Object.keys(errors)[0])
+      return
+    }
     setSaving(true)
     createInFlight.current = !workoutId
     setSaveError("")
@@ -242,24 +257,52 @@ export function WorkoutEditor({
               data: { ...payload, clientRequestId: draftId },
             })
       if (!result.ok) {
-        const fieldErrors = result.fieldErrors?.exercises
-        if (Array.isArray(fieldErrors)) {
+        const resultErrors = result.fieldErrors ?? {}
+        const nextFieldErrors: Record<string, string> = {}
+        for (const name of ["workoutDate", "name", "notes"] as const) {
+          if (typeof resultErrors[name] === "string")
+            nextFieldErrors[name] = resultErrors[name]
+        }
+        const exerciseErrors = resultErrors.exercises
+        const serverErrors: Record<string, string> = {}
+        if (Array.isArray(exerciseErrors)) {
           // fieldErrors indexes the submitted (savableRows) payload; map them
           // back onto those same rows so null-source exclusions can't shift
           // errors onto the wrong exercise.
-          const serverErrors: Record<string, string> = {}
           savableRows.forEach((row, index) => {
-            const item = fieldErrors[index]
-            if (item && typeof item === "object" && "sets" in item) {
-              const message =
-                typeof item.sets === "string" ? item.sets : repsError
-              row.sets.forEach((set) => {
-                serverErrors[set.key] = message
+            const item = exerciseErrors[index]
+            if (!item || typeof item !== "object") return
+            const issue = item as Record<string, unknown>
+            if (typeof issue.exercise === "string")
+              nextFieldErrors.exercises = issue.exercise
+            if (typeof issue.variantId === "string")
+              nextFieldErrors.exercises = issue.variantId
+            if (typeof issue.notes === "string")
+              nextFieldErrors[`notes-${row.key}`] = issue.notes
+            if (Array.isArray(issue.sets))
+              issue.sets.forEach((message, setIndex) => {
+                if (typeof message === "string" && row.sets[setIndex])
+                  serverErrors[row.sets[setIndex].key] = message
               })
-            }
+            else if (typeof issue.sets === "string")
+              row.sets.forEach((set) => {
+                serverErrors[set.key] = issue.sets as string
+              })
           })
           setSetErrors(serverErrors)
+        } else if (typeof exerciseErrors === "string") {
+          nextFieldErrors.exercises = exerciseErrors
         }
+        setFieldErrors(nextFieldErrors)
+        const first = [
+          "workoutDate",
+          "name",
+          "notes",
+          "exercises",
+          ...Object.keys(nextFieldErrors),
+          ...Object.keys(serverErrors),
+        ].find((id) => nextFieldErrors[id] || serverErrors[id])
+        if (first) focus(first)
         setSaveError(
           result.message ?? "We couldn’t save your workout. Please try again."
         )
@@ -277,7 +320,7 @@ export function WorkoutEditor({
     }
   }
   return (
-    <main className="mx-auto w-full max-w-3xl p-4 md:p-8">
+    <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
       <header className="mb-6 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -307,6 +350,9 @@ export function WorkoutEditor({
         </Button>
       </header>
       <form onSubmit={submit} noValidate className="space-y-5">
+        <p className="sr-only" role="status" aria-live="polite">
+          {announcement}
+        </p>
         {saveError && (
           <p
             role="alert"
@@ -316,37 +362,52 @@ export function WorkoutEditor({
           </p>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field>
+          <Field data-invalid={Boolean(fieldErrors.workoutDate)}>
             <FieldLabel htmlFor="workout-date">Date</FieldLabel>
             <Input
               id="workout-date"
+              ref={(node) => {
+                fieldRefs.current.workoutDate = node
+              }}
+              aria-invalid={Boolean(fieldErrors.workoutDate)}
               type="date"
               className="h-11 text-base md:text-sm"
               value={form.date}
               onChange={(e) => changed({ ...form, date: e.target.value })}
             />
+            <FieldError>{fieldErrors.workoutDate}</FieldError>
           </Field>
-          <Field>
+          <Field data-invalid={Boolean(fieldErrors.name)}>
             <FieldLabel htmlFor="workout-name">
               Workout name (optional)
             </FieldLabel>
             <Input
               id="workout-name"
+              ref={(node) => {
+                fieldRefs.current.name = node
+              }}
+              aria-invalid={Boolean(fieldErrors.name)}
               className="h-11 text-base md:text-sm"
               value={form.name}
               onChange={(e) => changed({ ...form, name: e.target.value })}
             />
+            <FieldError>{fieldErrors.name}</FieldError>
           </Field>
         </div>
-        <Field>
+        <Field data-invalid={Boolean(fieldErrors.notes)}>
           <FieldLabel htmlFor="workout-notes">
             General notes (optional)
           </FieldLabel>
           <Textarea
             id="workout-notes"
+            ref={(node) => {
+              fieldRefs.current.notes = node
+            }}
+            aria-invalid={Boolean(fieldErrors.notes)}
             value={form.notes}
             onChange={(e) => changed({ ...form, notes: e.target.value })}
           />
+          <FieldError>{fieldErrors.notes}</FieldError>
         </Field>
         <div className="space-y-3">
           {form.rows.map((row, index) => (
@@ -396,6 +457,10 @@ export function WorkoutEditor({
                     </FieldLabel>
                     <Textarea
                       id={`notes-${row.key}`}
+                      ref={(node) => {
+                        fieldRefs.current[`notes-${row.key}`] = node
+                      }}
+                      aria-invalid={Boolean(fieldErrors[`notes-${row.key}`])}
                       disabled={!row.variantId || row.unavailable}
                       value={row.notes}
                       onChange={(e) =>
@@ -409,6 +474,7 @@ export function WorkoutEditor({
                         })
                       }
                     />
+                    <FieldError>{fieldErrors[`notes-${row.key}`]}</FieldError>
                   </Field>
                   <div className="mt-3 space-y-2">
                     {row.sets.map((set, setIndex) => (
@@ -422,6 +488,9 @@ export function WorkoutEditor({
                         <div className="flex gap-2">
                           <Input
                             id={`reps-${set.key}`}
+                            ref={(node) => {
+                              fieldRefs.current[set.key] = node
+                            }}
                             className="h-11 text-base md:text-sm"
                             type="text"
                             inputMode="numeric"
@@ -483,21 +552,23 @@ export function WorkoutEditor({
                     variant="outline"
                     className="mt-3 h-11"
                     isDisabled={!row.variantId || row.unavailable}
-                    onPress={() =>
+                    onPress={() => {
+                      const set = { key: key(), reps: "" }
                       changed({
                         ...form,
                         rows: form.rows.map((item) =>
                           item.key === row.key
-                            ? {
-                                ...item,
-                                sets: [...item.sets, { key: key(), reps: "" }],
-                              }
+                            ? { ...item, sets: [...item.sets, set] }
                             : item
                         ),
                       })
-                    }
+                      announce(
+                        `Set ${row.sets.length + 1} added to ${row.variantName}.`
+                      )
+                      focus(set.key)
+                    }}
                   >
-                    <PlusIcon /> Add set
+                    <PlusIcon /> Add set to {row.variantName}
                   </Button>
                 </div>
                 <Button
@@ -505,12 +576,13 @@ export function WorkoutEditor({
                   variant="ghost"
                   size="icon-lg"
                   aria-label={`Remove ${row.variantName}`}
-                  onPress={() =>
+                  onPress={() => {
                     changed({
                       ...form,
                       rows: form.rows.filter((item) => item.key !== row.key),
                     })
-                  }
+                    announce(`${row.variantName} removed.`)
+                  }}
                 >
                   <Trash2Icon />
                 </Button>
@@ -519,32 +591,42 @@ export function WorkoutEditor({
           ))}
         </div>
         <div className="flex gap-2">
-          <Select
-            aria-label="Exercise"
-            className="min-w-0 flex-1"
-            selectedKey={selected || null}
-            onSelectionChange={(selectedKey) =>
-              setSelected(String(selectedKey))
-            }
-            isDisabled={saving}
-            placeholder="Select an exercise"
-          >
-            <SelectTrigger className="h-11!">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {pickerGroups.map((group) => (
-                <SelectGroup key={group.name}>
-                  <SelectLabel>{group.name}</SelectLabel>
-                  {group.variants.map((variant) => (
-                    <SelectItem key={variant.id} id={variant.id}>
-                      {variant.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="min-w-0 flex-1">
+            <Select
+              aria-label="Exercise"
+              className="min-w-0 flex-1"
+              selectedKey={selected || null}
+              onSelectionChange={(selectedKey) =>
+                setSelected(String(selectedKey))
+              }
+              isDisabled={saving}
+              placeholder="Select an exercise"
+            >
+              <SelectTrigger
+                id="exercise-picker"
+                aria-invalid={Boolean(fieldErrors.exercises)}
+                ref={(node) => {
+                  fieldRefs.current.exercises = node
+                }}
+                className="h-11!"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {pickerGroups.map((group) => (
+                  <SelectGroup key={group.name}>
+                    <SelectLabel>{group.name}</SelectLabel>
+                    {group.variants.map((variant) => (
+                      <SelectItem key={variant.id} id={variant.id}>
+                        {variant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError>{fieldErrors.exercises}</FieldError>
+          </div>
           <Button
             type="button"
             className="h-11"
@@ -595,7 +677,7 @@ export function WorkoutEditor({
           </AlertDialogFooter>
         </AlertDialogContent>
       )}
-    </main>
+    </div>
   )
 }
 
@@ -607,7 +689,7 @@ export function Success({
   onAnother: () => void
 }) {
   return (
-    <main className="mx-auto w-full max-w-3xl p-4 md:p-8">
+    <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
       <div className="border p-6">
         <h1 className="text-2xl font-semibold">Workout saved</h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -629,7 +711,7 @@ export function Success({
           </LinkButton>
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 
