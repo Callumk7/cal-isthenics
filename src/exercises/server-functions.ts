@@ -5,6 +5,8 @@ import { db } from "../db/client"
 import {
   archiveExerciseCategory,
   archiveExerciseVariant,
+  restoreExerciseCategory as restoreExerciseCategoryMutation,
+  restoreExerciseVariant as restoreExerciseVariantMutation,
   createExerciseCategory,
   createExerciseVariant,
   editExerciseVariant,
@@ -50,6 +52,14 @@ export const removeExerciseCategory = createServerFn({ method: "POST" })
     archiveExerciseCategory(db, await authenticatedUserId(), data.id)
   )
 
+export const restoreExerciseCategory = createServerFn({
+  method: "POST",
+})
+  .validator((input: { id: string }) => input)
+  .handler(async ({ data }) =>
+    restoreExerciseCategoryMutation(db, await authenticatedUserId(), data.id)
+  )
+
 export const addExerciseVariant = createServerFn({ method: "POST" })
   .validator(
     (input: {
@@ -75,4 +85,12 @@ export const removeExerciseVariant = createServerFn({ method: "POST" })
   .validator((input: { id: string }) => input)
   .handler(async ({ data }) =>
     archiveExerciseVariant(db, await authenticatedUserId(), data.id)
+  )
+
+export const restoreExerciseVariant = createServerFn({
+  method: "POST",
+})
+  .validator((input: { id: string }) => input)
+  .handler(async ({ data }) =>
+    restoreExerciseVariantMutation(db, await authenticatedUserId(), data.id)
   )

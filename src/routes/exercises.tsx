@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useRouter } from "@tanstack/react-router"
 
 import { ExerciseLibraryManager } from "@/exercises/library-manager"
 import { listManagedExercises } from "@/exercises/server-functions"
@@ -19,5 +19,11 @@ export const Route = createFileRoute("/exercises")({
 })
 
 function ExercisesPage() {
-  return <ExerciseLibraryManager initialCategories={Route.useLoaderData()} />
+  const router = useRouter()
+  return (
+    <ExerciseLibraryManager
+      initialCategories={Route.useLoaderData()}
+      onLibraryChanged={() => router.invalidate()}
+    />
+  )
 }

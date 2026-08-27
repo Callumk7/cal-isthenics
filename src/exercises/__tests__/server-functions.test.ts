@@ -5,6 +5,8 @@ import {
   listActiveExercises,
   readExerciseVariantReference,
   removeExerciseVariant,
+  restoreExerciseCategory,
+  restoreExerciseVariant,
 } from "../server-functions"
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   getExerciseVariantReference: vi.fn(),
   createExerciseCategory: vi.fn(),
   archiveExerciseVariant: vi.fn(),
+  restoreExerciseCategory: vi.fn(),
+  restoreExerciseVariant: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-start", () => ({
@@ -39,6 +43,8 @@ vi.mock("../library", () => ({
   createExerciseVariant: vi.fn(),
   editExerciseVariant: vi.fn(),
   archiveExerciseVariant: mocks.archiveExerciseVariant,
+  restoreExerciseCategory: mocks.restoreExerciseCategory,
+  restoreExerciseVariant: mocks.restoreExerciseVariant,
 }))
 
 describe("authenticated exercise server operations", () => {
@@ -50,11 +56,15 @@ describe("authenticated exercise server operations", () => {
     mocks.getExerciseVariantReference.mockResolvedValue(undefined)
     mocks.createExerciseCategory.mockResolvedValue({ ok: true })
     mocks.archiveExerciseVariant.mockResolvedValue({ ok: true })
+    mocks.restoreExerciseCategory.mockResolvedValue({ ok: true })
+    mocks.restoreExerciseVariant.mockResolvedValue({ ok: true })
 
     await listActiveExercises()
     await readExerciseVariantReference({ data: { id: "variant" } })
     await addExerciseCategory({ data: { name: "Push" } })
     await removeExerciseVariant({ data: { id: "variant" } })
+    await restoreExerciseCategory({ data: { id: "category" } })
+    await restoreExerciseVariant({ data: { id: "variant" } })
 
     expect(mocks.getActiveExerciseLibrary).toHaveBeenCalledWith(
       expect.anything(),
@@ -71,6 +81,16 @@ describe("authenticated exercise server operations", () => {
       { name: "Push" }
     )
     expect(mocks.archiveExerciseVariant).toHaveBeenCalledWith(
+      expect.anything(),
+      "owner",
+      "variant"
+    )
+    expect(mocks.restoreExerciseCategory).toHaveBeenCalledWith(
+      expect.anything(),
+      "owner",
+      "category"
+    )
+    expect(mocks.restoreExerciseVariant).toHaveBeenCalledWith(
       expect.anything(),
       "owner",
       "variant"

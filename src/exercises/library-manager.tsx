@@ -32,6 +32,8 @@ import {
   addExerciseVariant,
   removeExerciseCategory,
   removeExerciseVariant,
+  restoreExerciseCategory,
+  restoreExerciseVariant,
   updateExerciseCategory,
   updateExerciseVariant,
 } from "./server-functions"
@@ -66,8 +68,11 @@ const multiplierError =
 
 export function ExerciseLibraryManager({
   initialCategories,
+  onLibraryChanged,
 }: {
   initialCategories: ManagedCategory[]
+  /** Invalidates loaders that cache active exercise pickers and templates. */
+  onLibraryChanged?: () => void | Promise<void>
 }) {
   const [categories, setCategories] = useState(initialCategories)
   const [editor, setEditor] = useState<Editor>(null)
@@ -83,32 +88,74 @@ export function ExerciseLibraryManager({
   async function archive() {
     if (!archiveTarget) return
     const target = archiveTarget
-    const result =
-      target.kind === "category"
-        ? await removeExerciseCategory({ data: { id: target.category.id } })
-        : await removeExerciseVariant({ data: { id: target.variant.id } })
-    if (!result.ok) {
+    try {
+      const result =
+        target.kind === "category"
+          ? await removeExerciseCategory({ data: { id: target.category.id } })
+          : await removeExerciseVariant({ data: { id: target.variant.id } })
+      if (!result.ok) {
+        setAnnouncement("The item could not be archived. Please try again.")
+        return
+      }
+      if (target.kind === "category") {
+        replaceCategory({
+          ...target.category,
+          archivedAt: new Date().toISOString(),
+        })
+        setAnnouncement(`${target.category.name} archived.`)
+      } else {
+        replaceCategory({
+          ...target.category,
+          variants: target.category.variants.map((variant) =>
+            variant.id === target.variant.id
+              ? { ...variant, archivedAt: new Date().toISOString() }
+              : variant
+          ),
+        })
+        setAnnouncement(`${target.variant.name} archived.`)
+      }
+      setArchiveTarget(null)
+      void onLibraryChanged?.()
+    } catch {
       setAnnouncement("The item could not be archived. Please try again.")
-      return
     }
-    if (target.kind === "category") {
-      replaceCategory({
-        ...target.category,
-        archivedAt: new Date().toISOString(),
-      })
-      setAnnouncement(`${target.category.name} archived.`)
-    } else {
-      replaceCategory({
-        ...target.category,
-        variants: target.category.variants.map((variant) =>
-          variant.id === target.variant.id
-            ? { ...variant, archivedAt: new Date().toISOString() }
-            : variant
-        ),
-      })
-      setAnnouncement(`${target.variant.name} archived.`)
+  }
+
+  async function restore(
+    target:
+      | { kind: "category"; category: ManagedCategory }
+      | { kind: "variant"; category: ManagedCategory; variant: ManagedVariant }
+  ) {
+    try {
+      const result =
+        target.kind === "category"
+          ? await restoreExerciseCategory({ data: { id: target.category.id } })
+          : await restoreExerciseVariant({ data: { id: target.variant.id } })
+      if (!result.ok) {
+        setAnnouncement("The item could not be restored. Please try again.")
+        return
+      }
+      if (target.kind === "category") {
+        // Do not alter variant timestamps. Only individually archived variants
+        // remain archived after their parent becomes active again.
+        replaceCategory({ ...target.category, archivedAt: null })
+        setAnnouncement(`${target.category.name} restored.`)
+      } else {
+        replaceCategory({
+          ...target.category,
+          variants: target.category.variants.map((variant) =>
+            variant.id === target.variant.id
+              ? { ...variant, archivedAt: null }
+              : variant
+          ),
+        })
+        setAnnouncement(`${target.variant.name} restored.`)
+      }
+      void onLibraryChanged?.()
+    } catch {
+      // Leave the control available so a transient failure can be retried.
+      setAnnouncement("The item could not be restored. Please try again.")
     }
-    setArchiveTarget(null)
   }
 
   return (
@@ -185,7 +232,18 @@ export function ExerciseLibraryManager({
                       {category.variants.length === 1 ? "variant" : "variants"}
                     </p>
                   </div>
-                  {!archived && (
+                  {archived ? (
+                    <Button
+                      variant="outline"
+                      className="h-11 shrink-0"
+                      aria-label={`Restore ${category.name}`}
+                      onPress={() =>
+                        void restore({ kind: "category", category })
+                      }
+                    >
+                      Restore
+                    </Button>
+                  ) : (
                     <div className="flex shrink-0 gap-1">
                       <Button
                         variant="ghost"
@@ -217,8 +275,8 @@ export function ExerciseLibraryManager({
                     </p>
                   )}
                   {category.variants.map((variant) => {
-                    const variantArchived =
-                      Boolean(variant.archivedAt) || archived
+                    const individuallyArchived = Boolean(variant.archivedAt)
+                    const variantArchived = individuallyArchived || archived
                     return (
                       <div
                         key={variant.id}
@@ -240,7 +298,22 @@ export function ExerciseLibraryManager({
                             </span>
                           </p>
                         </div>
-                        {!variantArchived && (
+                        {individuallyArchived && !archived ? (
+                          <Button
+                            variant="outline"
+                            className="h-11 shrink-0"
+                            aria-label={`Restore ${variant.name}`}
+                            onPress={() =>
+                              void restore({
+                                kind: "variant",
+                                category,
+                                variant,
+                              })
+                            }
+                          >
+                            Restore
+                          </Button>
+                        ) : !variantArchived ? (
                           <div className="flex shrink-0 gap-1">
                             <Button
                               variant="ghost"
@@ -271,6 +344,10 @@ export function ExerciseLibraryManager({
                               <ArchiveIcon aria-hidden="true" />
                             </Button>
                           </div>
+                        ) : (
+                          <p className="shrink-0 text-right text-xs text-muted-foreground">
+                            Restore the category first.
+                          </p>
                         )}
                       </div>
                     )
@@ -321,7 +398,8 @@ export function ExerciseLibraryManager({
                 ? archiveTarget.category.name
                 : archiveTarget.variant.name}{" "}
               will remain in existing templates and workout history, but cannot
-              be newly selected. This action cannot be undone here.
+              be newly selected. It cannot be undone automatically; use Restore
+              in this library when you’re ready to select it again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

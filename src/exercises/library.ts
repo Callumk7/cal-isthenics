@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from "drizzle-orm"
+import { and, asc, eq, isNotNull, isNull } from "drizzle-orm"
 import type { DrizzleD1Database } from "drizzle-orm/d1"
 
 import type * as schema from "../db/schema"
@@ -194,6 +194,33 @@ export async function archiveExerciseCategory(
   return { ok: true, value: values[0] }
 }
 
+/**
+ * Restore only an archived category owned by the current user. Variant archive
+ * timestamps are deliberately untouched: a category archive never implies an
+ * individual variant archive.
+ */
+export async function restoreExerciseCategory(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  id: string,
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseCategories.$inferSelect>> {
+  const values = await db
+    .update(exerciseCategories)
+    .set({ archivedAt: null, updatedAt: now })
+    .where(
+      and(
+        eq(exerciseCategories.id, id),
+        eq(exerciseCategories.userId, userId),
+        isNotNull(exerciseCategories.archivedAt)
+      )
+    )
+    .returning()
+    .all()
+  if (values.length === 0) return { ok: false, error: "not_found" }
+  return { ok: true, value: values[0] }
+}
+
 async function findActiveOwnedCategory(
   db: ExerciseLibraryDatabase,
   userId: string,
@@ -303,6 +330,29 @@ export async function archiveExerciseVariant(
         eq(exerciseVariants.id, id),
         eq(exerciseVariants.userId, userId),
         isNull(exerciseVariants.archivedAt)
+      )
+    )
+    .returning()
+    .all()
+  if (values.length === 0) return { ok: false, error: "not_found" }
+  return { ok: true, value: values[0] }
+}
+
+/** Restore only an individually archived variant owned by the current user. */
+export async function restoreExerciseVariant(
+  db: ExerciseLibraryDatabase,
+  userId: string,
+  id: string,
+  now = new Date()
+): Promise<LibraryMutationResult<typeof exerciseVariants.$inferSelect>> {
+  const values = await db
+    .update(exerciseVariants)
+    .set({ archivedAt: null, updatedAt: now })
+    .where(
+      and(
+        eq(exerciseVariants.id, id),
+        eq(exerciseVariants.userId, userId),
+        isNotNull(exerciseVariants.archivedAt)
       )
     )
     .returning()
